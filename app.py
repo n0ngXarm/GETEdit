@@ -7,7 +7,7 @@ import pymupdf
 from PySide6.QtCore import Qt, QSize, QEventLoop
 from PySide6.QtGui import QImage, QPixmap, QIcon
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
-    QHBoxLayout, QPushButton, QLabel, QSpinBox, QFileDialog, QMessageBox, QListWidget, QListWidgetItem, QSplitter, QComboBox)
+    QHBoxLayout, QPushButton, QLabel, QSpinBox, QFileDialog, QMessageBox, QListWidget, QListWidgetItem, QSplitter, QComboBox, QInputDialog)
 
 
 def inspect_pdf(path):
@@ -51,14 +51,16 @@ class Window(QMainWindow):
         super().__init__()
         self.document = pymupdf.open()
         self.sources = set()
+        self.overlays = []
+        self.active_page = -1
         self.changed = False
-        self.setWindowTitle('GETEdit — รวมเอกสารเป็น PDF')
+        self.setWindowTitle('GETEdit — จัดเอกสารและเพิ่มข้อความ / รูป')
         self.resize(1050, 820)
         root = QWidget(); self.setCentralWidget(root)
         layout = QVBoxLayout(root); layout.setContentsMargins(22, 18, 22, 18)
-        title = QLabel('รวมเอกสารเป็น PDF'); title.setStyleSheet('font-size:26px; font-weight:600')
+        title = QLabel('จัดเอกสาร • เพิ่มข้อความและรูป'); title.setStyleSheet('font-size:26px; font-weight:600')
         layout.addWidget(title)
-        layout.addWidget(QLabel('กดเพิ่มไฟล์ → ตรวจหน้าที่รวมแล้ว → บันทึกเป็น PDF ใหม่'))
+        layout.addWidget(QLabel('เพิ่มไฟล์ → คลิกหน้า → เพิ่มข้อความ / รูป แล้วลากจัดวาง → บันทึก PDF ใหม่'))
         row = QHBoxLayout()
         self.add = QPushButton('＋ เพิ่มไฟล์ (เลือกหลายไฟล์ได้)'); self.add.clicked.connect(self.choose)
         row.addWidget(self.add)
@@ -71,9 +73,20 @@ class Window(QMainWindow):
         self.pages.currentRowChanged.connect(self.preview); split.addWidget(self.pages)
         panel = QWidget(); box = QVBoxLayout(panel)
         self.caption = QLabel('ตัวอย่างหน้าที่เลือก'); box.addWidget(self.caption)
-        self.picture = QLabel('เริ่มต้นด้วยปุ่ม ＋ เพิ่มไฟล์ ด้านบน')
-        self.picture.setAlignment(Qt.AlignmentFlag.AlignCenter); self.picture.setMinimumSize(300, 320)
-        box.addWidget(self.picture, 1); split.addWidget(panel); layout.addWidget(split, 1)
+        from editor import Canvas
+        self.canvas = Canvas(); self.canvas.edited.connect(self.mark_edited)
+        tools = QHBoxLayout()
+        for label, callback in [('＋ ข้อความ', self.add_text), ('＋ รูป', self.add_image), ('＋ กล่อง', lambda:self.canvas.add_object('box')),
+                ('แก้ข้อความ', self.edit_text), ('เล็กลง', lambda:self.canvas.scale_selected(.9)),
+                ('ใหญ่ขึ้น',lambda:self.canvas.scale_selected(1.1)), ('หมุน',self.canvas.rotate_selected),
+                ('ลบ',self.canvas.delete_selected), ('ย้อนกลับ',self.canvas.undo)]:
+            button=QPushButton(label);button.clicked.connect(callback);tools.addWidget(button)
+        box.addLayout(tools)
+        box.addWidget(QLabel('คลิกสิ่งที่เพิ่มแล้วลากย้าย • เล็กลง/ใหญ่ขึ้นเพื่อปรับขนาด • Delete ลบ • Ctrl+Z ย้อนกลับ'))
+        box.addWidget(self.canvas,1);split.addWidget(panel);layout.addWidget(split,1)
+        from PySide6.QtGui import QShortcut, QKeySequence
+        for key, callback in [('Delete',self.canvas.delete_selected),('Ctrl+Z',self.canvas.undo),('Ctrl+Shift+Z',self.canvas.redo)]:
+            shortcut=QShortcut(QKeySequence(key),self.canvas);shortcut.activated.connect(callback)
         self.summary = QLabel('ยังไม่มีเอกสาร'); layout.addWidget(self.summary)
         self.save = QPushButton('บันทึกเป็น PDF ใหม่'); self.save.setEnabled(False)
         self.save.clicked.connect(self.export); layout.addWidget(self.save)
@@ -89,6 +102,8 @@ class Window(QMainWindow):
         cursor = self.pages.currentRow()
         mode = self.placement.currentIndex()
         position = len(self.document) if mode == 0 or cursor < 0 else cursor + (mode == 2)
+        self.store_overlay()
+        self.active_page = -1
         first = position
         errors = []
         self.add.setEnabled(False)
@@ -102,6 +117,7 @@ class Window(QMainWindow):
                     data = convert_file(path)
                     with pymupdf.open(stream=data, filetype='pdf') as source:
                         self.document.insert_pdf(source, start_at=position)
+                        self.overlays[position:position] = [[] for _ in source]
                         position += len(source)
                     self.sources.add(Path(path).resolve()); self.changed = True
                 except Exception as error:
@@ -123,13 +139,56 @@ class Window(QMainWindow):
         self.summary.setText(f'รวมแล้ว {len(self.document)} หน้า • ลำดับทางซ้ายคือลำดับในไฟล์ที่จะบันทึก')
         self.preview()
 
+    def mark_edited(self):
+        self.changed = True
+
+    def store_overlay(self):
+        if 0 <= self.active_page < len(self.overlays):
+            self.overlays[self.active_page] = self.canvas.objects()
+
     def preview(self, *_):
         index = self.pages.currentRow()
-        if index < 0: return
-        pix = self.document[index].get_pixmap(matrix=pymupdf.Matrix(1, 1), alpha=False)
-        image = QImage(pix.samples, pix.width, pix.height, pix.stride, QImage.Format.Format_RGB888).copy()
-        self.picture.setPixmap(QPixmap.fromImage(image).scaled(660, 490, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-        self.caption.setText(f'หน้า {index+1} จาก {len(self.document)} — ตัวอย่างผลลัพธ์จริง')
+        if index < 0 or index == self.active_page: return
+        self.store_overlay()
+        self.active_page = index
+        self.canvas.load(self.document[index], self.overlays[index])
+        self.caption.setText(f'หน้า {index+1} จาก {len(self.document)} — คลิกเพิ่มข้อความหรือรูปด้านล่าง')
+
+    def add_text(self):
+        if self.active_page < 0: return
+        text, ok=QInputDialog.getMultiLineText(self,'เพิ่มข้อความ','ข้อความที่ต้องการวางบนหน้า:')
+        if ok and text:self.canvas.add_object('text',text=text)
+
+    def edit_text(self):
+        items=self.canvas.selected()
+        if len(items)!=1 or items[0].data['kind']!='text': return
+        text,ok=QInputDialog.getMultiLineText(self,'แก้ข้อความที่เพิ่ม','ข้อความ:',items[0].data['text'])
+        if ok:self.canvas.edit_text(text)
+
+    def add_image(self):
+        if self.active_page < 0: return
+        path,_=QFileDialog.getOpenFileName(self,'เลือกรูปที่จะวางบนหน้า','','Images (*.png *.jpg *.jpeg *.bmp *.webp)')
+        if path:
+            data=Path(path).read_bytes()
+            if QImage.fromData(data).isNull():
+                QMessageBox.warning(self,'อ่านรูปไม่ได้','ไม่สามารถเปิดภาพนี้ได้');return
+            self.canvas.add_object('image',image=data)
+
+    def export_bytes(self):
+        self.store_overlay()
+        from editor import Canvas
+        with pymupdf.open(stream=self.document.tobytes(),filetype='pdf') as result:
+            canvas=Canvas()
+            for index, states in enumerate(self.overlays):
+                if not states:continue
+                page=result[index]
+                canvas.load(page,states)
+                # Flatten only added objects; original PDF text and vectors remain.
+                rotation=page.rotation
+                page.set_rotation(0)
+                page.insert_image(page.rect,stream=canvas.overlay_png(),rotate=(360-rotation)%360)
+                page.set_rotation(rotation)
+            return result.tobytes()
 
     def export(self):
         path, _ = QFileDialog.getSaveFileName(self, 'บันทึกเป็น PDF ใหม่', 'GETEdit_รวมเอกสาร.pdf', 'PDF (*.pdf)')
@@ -138,7 +197,7 @@ class Window(QMainWindow):
         try:
             if Path(path).exists() or Path(path).resolve() in self.sources:
                 raise ValueError('กรุณาใช้ชื่อไฟล์ใหม่ เพื่อเก็บต้นฉบับไว้')
-            data = self.document.tobytes()
+            data = self.export_bytes()
             with open(path, 'xb') as stream: stream.write(data)
             self.changed = False
             QMessageBox.information(self, 'บันทึกเรียบร้อย', f'รวม {len(self.document)} หน้า\n{path}')
