@@ -94,3 +94,29 @@ class PageManagerTests(unittest.TestCase):
         self.assertEqual(self.texts(), ['FOUR', 'ONE', 'TWO', 'THREE'])
         self.window.undo()
         self.assertEqual(self.texts(), ['ONE', 'TWO', 'THREE', 'FOUR'])
+
+    def test_grid_layout_and_drop_across_columns(self):
+        from PySide6.QtCore import QPointF, Qt
+        from PySide6.QtGui import QDropEvent
+        from PySide6.QtWidgets import QListView
+        self.window.show(); self.app.processEvents()
+        self.window.set_grid_view(True); self.app.processEvents()
+        pages = self.window.pages
+        self.assertEqual(pages.viewMode(), QListView.ViewMode.IconMode)
+        first = pages.visualItemRect(pages.item(0))
+        second = pages.visualItemRect(pages.item(1))
+        self.assertEqual(first.top(), second.top())
+        self.assertGreater(second.left(), first.left())
+        pages.setCurrentRow(3)
+        class InternalDrop(QDropEvent):
+            def source(self): return pages
+        event = InternalDrop(QPointF(second.right()-2, second.center().y()),
+            Qt.DropAction.MoveAction, pages.model().mimeData(pages.selectedIndexes()),
+            Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier)
+        pages.dropEvent(event)
+        self.assertEqual(self.texts(), ['ONE', 'TWO', 'FOUR', 'THREE'])
+        self.window.set_grid_view(False)
+        self.assertEqual(pages.viewMode(), QListView.ViewMode.ListMode)
+        self.assertEqual(self.texts(), ['ONE', 'TWO', 'FOUR', 'THREE'])
+        self.window.undo()
+        self.assertEqual(self.texts(), ['ONE', 'TWO', 'THREE', 'FOUR'])
