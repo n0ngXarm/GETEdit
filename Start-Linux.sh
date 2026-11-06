@@ -1,4 +1,6 @@
 #!/bin/sh
+GETEDIT_LAUNCH_CWD="$PWD"
+export GETEDIT_LAUNCH_CWD
 cd "$(dirname "$0")" || exit 1
 if [ -x .venv/bin/python ]; then
  exec .venv/bin/python app.py "$@"

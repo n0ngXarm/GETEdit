@@ -47,3 +47,11 @@ required modules/license and exclusion of personal PDF/image files.
 25 local regression tests passed, including a 1920px reading-layout regression
 for sidebar width, thumbnail height and mode-specific hint. Grid/reading
 screenshots inspected with 18 landscape pages. No runtime dependencies changed.
+
+## 1.0.2 startup and input compatibility
+
+Verified reported source opens from correct absolute path (22 pages), without
+modifying it. Tests cover relative/absolute Nautilus startup, URI decoding,
+caller-directory-preserving installed launcher, UTF-8 Thai text, CSV, HTML, SVG,
+content-detected PDF/image, CBZ and FB2. Broader reader support is conditional;
+not every input format/version or Office template has been tested.

@@ -14,7 +14,6 @@ def install(data_dir=None):
     data = Path(data_dir) if data_dir else Path(os.environ.get('XDG_DATA_HOME', Path.home()/'.local/share'))
     destination = data/'nautilus/scripts/GETEdit'
     launcher = ('#!/bin/sh\n# GETEdit Nautilus launcher\n'
-                f'cd {shlex.quote(str(project))} || exit 1\n'
                 f'exec {shlex.quote(sys.executable)} {shlex.quote(str(project/"app.py"))} "$@"\n')
     destination.parent.mkdir(parents=True, exist_ok=True)
     if destination.exists() and not destination.read_text().startswith('#!/bin/sh\n# GETEdit Nautilus launcher\n'):

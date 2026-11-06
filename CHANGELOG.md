@@ -1,5 +1,12 @@
 # Changes
 
+## 1.0.2
+
+- Fix first-open failure from Nautilus: preserve caller directory and resolve absolute selections/file URIs before import.
+- Launchers preserve the original working directory for relative filenames.
+- Allow all filename extensions in picker, detect PDF/images by content and expand text/HTML/SVG/e-book/Office inputs using existing readers.
+- Unsupported binary files report an error; no attachments or content-editing features were added.
+
 ## 1.0.1
 
 - Shorter Thai command labels with guidance matched to grid/reading mode.

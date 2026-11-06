@@ -8,11 +8,30 @@ from pathlib import Path
 import pymupdf
 from storage import write_new_file
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 from PySide6.QtCore import Qt, QSize, Signal, QTimer, QProcess
 from PySide6.QtGui import QImage, QPixmap, QIcon, QColor, QPainter, QPen
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
     QHBoxLayout, QPushButton, QLabel, QFileDialog, QMessageBox, QListWidget, QListWidgetItem, QSplitter, QGraphicsView, QGraphicsScene, QAbstractItemView, QListView)
+
+
+def startup_paths(arguments, environ=None, cwd=None):
+    from urllib.parse import urlsplit
+    from urllib.request import url2pathname
+    environ = os.environ if environ is None else environ
+    def local_path(value):
+        if value.startswith('file:'):
+            uri=urlsplit(value)
+            if uri.netloc not in ('','localhost'):
+                raise ValueError('กรุณาคัดลอกไฟล์ลงเครื่องก่อนเปิด')
+            return Path(url2pathname(uri.path))
+        return Path(value)
+    base=environ.get('GETEDIT_LAUNCH_CWD') or environ.get('NAUTILUS_SCRIPT_CURRENT_URI') or cwd or Path.cwd()
+    base=local_path(str(base))
+    selected=environ.get('NAUTILUS_SCRIPT_SELECTED_FILE_PATHS','').splitlines()
+    if not selected:selected=environ.get('NAUTILUS_SCRIPT_SELECTED_URIS','').splitlines()
+    values=selected or arguments
+    return [str((path if path.is_absolute() else base/path).resolve()) for path in map(local_path,values)]
 
 
 def inspect_pdf(path):
@@ -359,7 +378,7 @@ class Window(QMainWindow):
 
     def choose(self):
         if self.busy:return
-        paths,_=QFileDialog.getOpenFileNames(self,'เพิ่มไฟล์เป็นหน้าเอกสาร — เลือกหลายไฟล์ได้','','ไฟล์ที่รองรับ (*.pdf *.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp *.doc *.docx *.odt *.rtf *.xls *.xlsx *.ods *.ppt *.pptx *.odp);;ทุกไฟล์ (*)')
+        paths,_=QFileDialog.getOpenFileNames(self,'เลือกไฟล์ที่จะเพิ่ม — เลือกหลายไฟล์ได้','','ทุกไฟล์ (*)')
         if paths:self.begin_import(paths)
 
     def add_paths(self, paths):
@@ -548,6 +567,8 @@ class Window(QMainWindow):
 if __name__=='__main__':
     app=QApplication(sys.argv);app.setStyle('Fusion')
     window=Window();window.show()
-    paths=sys.argv[1:] or os.environ.get('NAUTILUS_SCRIPT_SELECTED_FILE_PATHS','').splitlines()
+    try:paths=startup_paths(sys.argv[1:])
+    except ValueError as error:
+        QMessageBox.warning(window,'เปิดไฟล์ไม่ได้',str(error));paths=[]
     if paths:QTimer.singleShot(0,lambda:window.begin_import(paths))
     sys.exit(app.exec())
