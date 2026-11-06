@@ -37,6 +37,8 @@ DOC/DOCX/ODT/RTF/XLS/XLSX/ODS/PPT/PPTX/ODP ต้องมี LibreOffice อย
 
 ### Linux
 
+ระบบ Linux แบบ minimal อาจต้องมี `libegl1` (หรือแพ็กเกจ EGL ของ distribution) เพื่อโหลด Qt
+
 เปิด Terminal ในโฟลเดอร์โปรแกรม:
 
 ```sh

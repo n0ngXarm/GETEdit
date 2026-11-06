@@ -30,3 +30,14 @@ Deterministic stress check: 300 initial pages, 90 mixed reorder/delete/undo oper
 CI first found a synchronous QProcess FailedToStart cleanup race on Windows;
 fixed by sending the request only from QProcess.started. Regression added.
 Ubuntu runner required libegl1; owner approved installing it only in ephemeral CI.
+
+## Release verification
+
+Release v1.0.0 targets code commit 2a380dab0014bc583992bc4c43932ab059d4f8ef.
+GitHub Actions run 42163115484 completed successfully: Linux and Windows each
+passed all 24 regression tests and the 300-page/90-operation stress check.
+https://github.com/n0ngXarm/GETEdit/actions/runs/42163115484
+
+Linux source ZIP was extracted into a temporary directory and its included
+regression suite executed successfully. Both ZIP manifests were checked for
+required modules/license and exclusion of personal PDF/image files.
