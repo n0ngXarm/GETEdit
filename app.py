@@ -31,7 +31,9 @@ def startup_paths(arguments, environ=None, cwd=None):
     selected=environ.get('NAUTILUS_SCRIPT_SELECTED_FILE_PATHS','').splitlines()
     if not selected:selected=environ.get('NAUTILUS_SCRIPT_SELECTED_URIS','').splitlines()
     values=selected or arguments
-    return [str((path if path.is_absolute() else base/path).resolve()) for path in map(local_path,values)]
+    # Preserve selected spelling (including Windows 8.3 aliases). Imports
+    # canonicalize later; startup only needs a correct absolute location.
+    return [str((path if path.is_absolute() else base/path).absolute()) for path in map(local_path,values)]
 
 
 def inspect_pdf(path):
