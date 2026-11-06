@@ -4,10 +4,10 @@ import sys
 import tempfile
 from pathlib import Path
 import pymupdf
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, QEventLoop
 from PySide6.QtGui import QImage, QPixmap, QIcon
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
-    QHBoxLayout, QPushButton, QLabel, QSpinBox, QFileDialog, QMessageBox, QListWidget, QListWidgetItem, QSplitter)
+    QHBoxLayout, QPushButton, QLabel, QSpinBox, QFileDialog, QMessageBox, QListWidget, QListWidgetItem, QSplitter, QComboBox)
 
 
 def inspect_pdf(path):
@@ -49,122 +49,113 @@ def insert_pdf(main, extra, before, output):
 class Window(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.main = self.extra = None
-        self.setWindowTitle('แทรกหน้า PDF')
-        self.resize(1100, 850)
+        self.document = pymupdf.open()
+        self.sources = set()
+        self.changed = False
+        self.setWindowTitle('GETEdit — รวมเอกสารเป็น PDF')
+        self.resize(1050, 820)
         root = QWidget(); self.setCentralWidget(root)
-        layout = QVBoxLayout(root); layout.setContentsMargins(28, 24, 28, 24)
-        title = QLabel('แทรกหน้า PDF'); title.setStyleSheet('font-size:26px;font-weight:600')
+        layout = QVBoxLayout(root); layout.setContentsMargins(22, 18, 22, 18)
+        title = QLabel('รวมเอกสารเป็น PDF'); title.setStyleSheet('font-size:26px; font-weight:600')
         layout.addWidget(title)
-        layout.addWidget(QLabel('เลือกเอกสารหลักและไฟล์ที่จะแทรก แล้วบันทึกเป็นไฟล์ใหม่'))
-        self.labels = []
-        for index, name in enumerate(('1. เลือก PDF หลัก', '2. เลือก PDF ที่จะแทรก')):
-            button = QPushButton(name); button.clicked.connect(lambda checked=False, i=index: self.choose(i))
-            layout.addWidget(button)
-            label = QLabel('ยังไม่ได้เลือกไฟล์'); label.setWordWrap(True)
-            layout.addWidget(label); self.labels.append(label)
-        layout.addWidget(QLabel('3. คลิกรูปหน้าเอกสารเดิมที่ต้องการแทรกไว้ข้างหน้า หรือเลือกต่อท้าย'))
+        layout.addWidget(QLabel('กดเพิ่มไฟล์ → ตรวจหน้าที่รวมแล้ว → บันทึกเป็น PDF ใหม่'))
         row = QHBoxLayout()
-        row.addWidget(QLabel('แทรกก่อนหน้าเดิม:'))
-        self.position = QSpinBox(); self.position.setRange(1, 1)
-        self.position.valueChanged.connect(self.preview); row.addWidget(self.position)
-        append = QPushButton('ใส่ท้ายเอกสาร'); append.clicked.connect(lambda: self.position.setValue(self.position.maximum()))
-        row.addWidget(append); layout.addLayout(row)
+        self.add = QPushButton('＋ เพิ่มไฟล์ (เลือกหลายไฟล์ได้)'); self.add.clicked.connect(self.choose)
+        row.addWidget(self.add)
+        self.placement = QComboBox()
+        self.placement.addItems(['เพิ่มท้ายเอกสาร', 'เพิ่มก่อนหน้าที่เลือก', 'เพิ่มหลังหน้าที่เลือก'])
+        row.addWidget(self.placement); layout.addLayout(row)
+        layout.addWidget(QLabel('รองรับ PDF • รูปภาพ • Word / Excel / PowerPoint เมื่อมี LibreOffice'))
         split = QSplitter()
-        self.pages = QListWidget(); self.pages.setMaximumWidth(210)
-        self.pages.setIconSize(QSize(120, 160))
-        self.pages.currentRowChanged.connect(lambda row: self.position.setValue(row + 1) if row >= 0 else None)
-        split.addWidget(self.pages)
-        self.pictures = []
-        for caption in ('เอกสารเดิม: หน้านี้จะเลื่อนไปหลังไฟล์ที่แทรก', 'ไฟล์ที่จะแทรก: หน้าแรก'):
-            panel = QWidget(); box = QVBoxLayout(panel)
-            label = QLabel(caption); label.setWordWrap(True); box.addWidget(label)
-            picture = QLabel('เลือกไฟล์เพื่อแสดงภาพเอกสาร'); picture.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            picture.setMinimumSize(240, 280); box.addWidget(picture, 1)
-            self.pictures.append(picture); split.addWidget(panel)
-        self.picture = self.pictures[0]
-        layout.addWidget(split, 1)
-        self.summary = QLabel('เลือกเอกสารหลัก แล้วเลือกไฟล์ที่จะแทรก'); self.summary.setWordWrap(True)
-        self.summary.setStyleSheet('padding:12px; background:#e2edf9; color:#163653; font-size:15px;')
-        layout.addWidget(self.summary)
-        self.save = QPushButton('บันทึก PDF เป็นไฟล์ใหม่'); self.save.setEnabled(False)
+        self.pages = QListWidget(); self.pages.setIconSize(QSize(105, 145)); self.pages.setMaximumWidth(290)
+        self.pages.currentRowChanged.connect(self.preview); split.addWidget(self.pages)
+        panel = QWidget(); box = QVBoxLayout(panel)
+        self.caption = QLabel('ตัวอย่างหน้าที่เลือก'); box.addWidget(self.caption)
+        self.picture = QLabel('เริ่มต้นด้วยปุ่ม ＋ เพิ่มไฟล์ ด้านบน')
+        self.picture.setAlignment(Qt.AlignmentFlag.AlignCenter); self.picture.setMinimumSize(300, 320)
+        box.addWidget(self.picture, 1); split.addWidget(panel); layout.addWidget(split, 1)
+        self.summary = QLabel('ยังไม่มีเอกสาร'); layout.addWidget(self.summary)
+        self.save = QPushButton('บันทึกเป็น PDF ใหม่'); self.save.setEnabled(False)
         self.save.clicked.connect(self.export); layout.addWidget(self.save)
-        layout.addWidget(QLabel('ทำงานในเครื่อง • แทรกทุกหน้าของไฟล์ที่เลือก • ต้นฉบับยังอยู่ครบ'))
+        layout.addWidget(QLabel('ทุกไฟล์จะกลายเป็นหน้า PDF • ต้นฉบับยังอยู่ครบ • ทำงานในเครื่อง'))
 
-    def load_path(self, index, path):
-        count = inspect_pdf(path)
-        self.labels[index].setText(f'{path}\n{count} หน้า')
-        if index == 0:
-            self.main = path
-            self.pages.blockSignals(True); self.pages.clear()
-            with pymupdf.open(path) as doc:
-                for number, page in enumerate(doc):
-                    pix = page.get_pixmap(matrix=pymupdf.Matrix(.18, .18), alpha=False)
-                    image = QImage(pix.samples, pix.width, pix.height, pix.stride, QImage.Format.Format_RGB888).copy()
-                    self.pages.addItem(QListWidgetItem(QIcon(QPixmap.fromImage(image)), f'หน้า {number + 1}'))
-            self.pages.addItem('＋ ต่อท้ายเอกสาร')
-            self.pages.blockSignals(False)
-            self.position.setRange(1, count + 1)
-        else: self.extra = path
-        self.save.setEnabled(bool(self.main and self.extra)); self.preview()
+    def choose(self):
+        paths, _ = QFileDialog.getOpenFileNames(self, 'เพิ่มไฟล์ — เลือกหลายไฟล์ได้', '',
+            'ไฟล์ที่รองรับ (*.pdf *.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp *.doc *.docx *.odt *.rtf *.xls *.xlsx *.ods *.ppt *.pptx *.odp);;ทุกไฟล์ (*)')
+        if paths: self.add_paths(paths)
 
-    def choose(self, index):
-        path, _ = QFileDialog.getOpenFileName(self, 'เลือก PDF', '', 'PDF (*.pdf)')
-        if not path: return
-        try: self.load_path(index, path)
-        except Exception as error:
-            QMessageBox.warning(self, 'เปิดไฟล์ไม่ได้', str(error))
-
-    def show_page(self, label, path, number):
-        with pymupdf.open(path) as doc:
-            pix = doc[number].get_pixmap(matrix=pymupdf.Matrix(.8, .8), alpha=False)
-            image = QImage(pix.samples, pix.width, pix.height, pix.stride, QImage.Format.Format_RGB888).copy()
-            label.setPixmap(QPixmap.fromImage(image).scaled(350, 430, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-
-    def preview(self):
-        if not self.main: return
+    def add_paths(self, paths):
+        from converter import convert_file
+        cursor = self.pages.currentRow()
+        mode = self.placement.currentIndex()
+        position = len(self.document) if mode == 0 or cursor < 0 else cursor + (mode == 2)
+        first = position
+        errors = []
+        self.add.setEnabled(False)
+        self.save.setEnabled(False)
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
-            count = inspect_pdf(self.main)
-            index = self.position.value() - 1
-            self.pages.blockSignals(True); self.pages.setCurrentRow(index); self.pages.blockSignals(False)
-            if index == count:
-                self.picture.setText('ใส่หลังหน้าสุดท้ายของเอกสาร')
-            else:
-                self.show_page(self.picture, self.main, index)
-            if not self.extra:
-                self.summary.setText('ขั้นตอนถัดไป: กด “2. เลือก PDF ที่จะแทรก” เพื่อเพิ่มเอกสาร')
-                return
-            added = inspect_pdf(self.extra)
-            self.show_page(self.pictures[1], self.extra, 0)
-            location = 'ท้ายเอกสาร' if index == count else f'ก่อนหน้าเดิม {index + 1} (หน้าเดิมจะเลื่อนไปหน้า {index + added + 1})'
-            self.summary.setText(f'จะใส่ไฟล์ใหม่ {added} หน้า {location} → รวม {count + added} หน้า\nกดบันทึกด้านล่างเพื่อสร้างไฟล์ใหม่')
-        except Exception as error:
-            self.summary.setText(str(error))
+            for path in paths:
+                self.summary.setText('กำลังเพิ่ม: ' + Path(path).name)
+                QApplication.processEvents(QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents)
+                try:
+                    data = convert_file(path)
+                    with pymupdf.open(stream=data, filetype='pdf') as source:
+                        self.document.insert_pdf(source, start_at=position)
+                        position += len(source)
+                    self.sources.add(Path(path).resolve()); self.changed = True
+                except Exception as error:
+                    errors.append(Path(path).name + ': ' + str(error))
+            self.refresh(first)
+        finally:
+            QApplication.restoreOverrideCursor()
+            self.add.setEnabled(True); self.save.setEnabled(bool(len(self.document)))
+        if errors: QMessageBox.warning(self, 'บางไฟล์เพิ่มไม่ได้', '\n'.join(errors))
+
+    def refresh(self, selected):
+        self.pages.blockSignals(True); self.pages.clear()
+        for number, page in enumerate(self.document):
+            pix = page.get_pixmap(matrix=pymupdf.Matrix(.16, .16), alpha=False)
+            image = QImage(pix.samples, pix.width, pix.height, pix.stride, QImage.Format.Format_RGB888).copy()
+            self.pages.addItem(QListWidgetItem(QIcon(QPixmap.fromImage(image)), f'หน้า {number+1}'))
+        self.pages.blockSignals(False)
+        self.pages.setCurrentRow(min(selected, len(self.document)-1))
+        self.summary.setText(f'รวมแล้ว {len(self.document)} หน้า • ลำดับทางซ้ายคือลำดับในไฟล์ที่จะบันทึก')
+        self.preview()
+
+    def preview(self, *_):
+        index = self.pages.currentRow()
+        if index < 0: return
+        pix = self.document[index].get_pixmap(matrix=pymupdf.Matrix(1, 1), alpha=False)
+        image = QImage(pix.samples, pix.width, pix.height, pix.stride, QImage.Format.Format_RGB888).copy()
+        self.picture.setPixmap(QPixmap.fromImage(image).scaled(660, 490, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+        self.caption.setText(f'หน้า {index+1} จาก {len(self.document)} — ตัวอย่างผลลัพธ์จริง')
 
     def export(self):
-        suggestion = str(Path(self.main).with_name(Path(self.main).stem + '_แทรกหน้า.pdf'))
-        path, _ = QFileDialog.getSaveFileName(self, 'บันทึกเป็นไฟล์ใหม่', suggestion, 'PDF (*.pdf)')
+        path, _ = QFileDialog.getSaveFileName(self, 'บันทึกเป็น PDF ใหม่', 'GETEdit_รวมเอกสาร.pdf', 'PDF (*.pdf)')
         if not path: return
         if not path.lower().endswith('.pdf'): path += '.pdf'
         try:
-            count = insert_pdf(self.main, self.extra, self.position.value(), path)
-            QMessageBox.information(self, 'เรียบร้อย', f'บันทึกแล้ว รวม {count} หน้า\n{path}')
+            if Path(path).exists() or Path(path).resolve() in self.sources:
+                raise ValueError('กรุณาใช้ชื่อไฟล์ใหม่ เพื่อเก็บต้นฉบับไว้')
+            data = self.document.tobytes()
+            with open(path, 'xb') as stream: stream.write(data)
+            self.changed = False
+            QMessageBox.information(self, 'บันทึกเรียบร้อย', f'รวม {len(self.document)} หน้า\n{path}')
         except Exception as error:
             QMessageBox.warning(self, 'บันทึกไม่สำเร็จ', str(error))
 
+    def closeEvent(self, event):
+        if self.changed and QMessageBox.question(self, 'ยังไม่ได้บันทึก', 'ปิดโดยไม่บันทึกเอกสารที่เพิ่มหรือไม่?',
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
+            event.ignore(); return
+        event.accept()
+
 
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    app.setStyle('Fusion')
-    window = Window()
-    paths = sys.argv[1:]
-    if not paths:
-        paths = os.environ.get('NAUTILUS_SCRIPT_SELECTED_FILE_PATHS', '').splitlines()
-    for index, path in enumerate(paths[:2]):
-        try: window.load_path(index, str(Path(path).absolute()))
-        except Exception as error:
-            QMessageBox.warning(window, 'เปิดไฟล์ไม่ได้', str(error))
-    if len(paths) > 2:
-        QMessageBox.information(window, 'เลือกไฟล์', 'เปิดสองไฟล์แรกแล้ว: ไฟล์หลักและไฟล์ที่จะแทรก กรุณาตรวจสอบลำดับในหน้าต่าง')
-    window.show()
+    app = QApplication(sys.argv); app.setStyle('Fusion')
+    window = Window(); window.show()
+    paths = sys.argv[1:] or os.environ.get('NAUTILUS_SCRIPT_SELECTED_FILE_PATHS', '').splitlines()
+    if paths: window.add_paths(paths)
     sys.exit(app.exec())
