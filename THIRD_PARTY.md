@@ -18,4 +18,4 @@ Runtime dependencies are downloaded separately by pip, with their own licenses.
 
 Distributors who bundle runtime libraries into binaries must include their
 licenses/notices and meet corresponding source and relinking requirements.
-This release is source-based and includes no frozen EXE or AppImage.
+Native Windows installers bundle Python, PyMuPDF, PySide6 and their runtime libraries. Their notices and licenses are included under licenses/ and BUILD-NOTICES.txt, along with corresponding-source.zip for the exact application commit. Qt shared libraries remain separate in _internal, allowing replacement with compatible modified libraries. Versioned dependency source locations are recorded in BUILD-NOTICES.txt. LibreOffice remains external.
