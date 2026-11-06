@@ -1,4 +1,4 @@
-GETEdit 1.0.5
+GETEdit 1.0.6
 Copyright (C) 2026 GETEdit contributors
 
 Licensed under the GNU Affero General Public License, version 3 only.
@@ -6,4 +6,4 @@ This program is distributed WITHOUT ANY WARRANTY. See LICENSE.
 Complete application source is included in this source distribution.
 https://github.com/n0ngXarm/GETEdit
 
-Third-party packages are not bundled. See THIRD_PARTY.md for their licenses.
+Source distributions require third-party packages separately. Native Windows installers bundle runtime packages; see BUILD-NOTICES.txt and licenses/ for versions, source locations and license notices.

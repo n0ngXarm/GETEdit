@@ -679,33 +679,42 @@ class Window(QMainWindow):
 
 
 if __name__=='__main__':
-    app=QApplication(sys.argv);app.setStyle('Fusion')
-    app.setWindowIcon(QIcon(str(Path(__file__).parent/'assets/app.ico')))
-    window=Window();window.show()
-    if '--verify-install' in sys.argv:
-        import time
-        folder=Path(sys.argv[sys.argv.index('--verify-install')+1])
-        source=folder/'ทดสอบ input.pdf'
-        with pymupdf.open() as doc:
-            doc.new_page().insert_text((50,50),'INSTALL VERIFIED');doc.save(source)
-        window.begin_import([str(source)])
-        deadline=time.monotonic()+40
-        def verify():
-            if window.busy and time.monotonic()<deadline:
-                QTimer.singleShot(50,verify);return
-            try:
-                assert not window.busy and len(window.document)==1
-                assert 'INSTALL VERIFIED' in window.document[0].get_text()
-                window.document.save(folder/'export.pdf')
-                with pymupdf.open(folder/'export.pdf') as doc:assert len(doc)==1
-                (folder/'verified.txt').write_text('ok')
-            except Exception:
-                app.exit(1);return
-            window.changed=False;window.close();app.quit()
-        QTimer.singleShot(50,verify)
+    try:
+        app=QApplication(sys.argv);app.setStyle('Fusion')
+        app.setWindowIcon(QIcon(str(Path(__file__).parent/'assets/app.ico')))
+        window=Window();window.show()
+        if '--verify-install' in sys.argv:
+            import time
+            folder=Path(sys.argv[sys.argv.index('--verify-install')+1])
+            source=folder/'ทดสอบ input.pdf'
+            with pymupdf.open() as doc:
+                doc.new_page().insert_text((50,50),'INSTALL VERIFIED');doc.save(source)
+            window.begin_import([str(source)])
+            deadline=time.monotonic()+40
+            def verify():
+                if window.busy and time.monotonic()<deadline:
+                    QTimer.singleShot(50,verify);return
+                try:
+                    assert not window.busy and len(window.document)==1
+                    assert 'INSTALL VERIFIED' in window.document[0].get_text()
+                    window.document.save(folder/'export.pdf')
+                    with pymupdf.open(folder/'export.pdf') as doc:assert len(doc)==1
+                    (folder/'verified.txt').write_text('ok')
+                except Exception:
+                    app.exit(1);return
+                window.changed=False;window.close();app.quit()
+            QTimer.singleShot(50,verify)
+            sys.exit(app.exec())
+        try:paths=startup_paths(sys.argv[1:])
+        except ValueError as error:
+            QMessageBox.warning(window,'เปิดไฟล์ไม่ได้',str(error));paths=[]
+        if paths:QTimer.singleShot(0,lambda:window.begin_import(paths))
         sys.exit(app.exec())
-    try:paths=startup_paths(sys.argv[1:])
-    except ValueError as error:
-        QMessageBox.warning(window,'เปิดไฟล์ไม่ได้',str(error));paths=[]
-    if paths:QTimer.singleShot(0,lambda:window.begin_import(paths))
-    sys.exit(app.exec())
+    except Exception:
+        import traceback
+        from pathlib import Path
+        destination=os.environ.get('WINDOWS_APP_DIAGNOSTICS')
+        if destination:
+            Path(destination).write_text(traceback.format_exc(),encoding='utf-8')
+            sys.exit(1)
+        raise
