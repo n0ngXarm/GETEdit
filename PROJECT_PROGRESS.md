@@ -47,3 +47,5 @@ CI 42171209057: Linux passed; Windows startup path assertions exposed canonicali
 1.0.2 complete: stable release https://github.com/n0ngXarm/GETEdit/releases/tag/v1.0.2 targets 3bd5b30c6f11ec7dbf747efe230fe21b69439309. CI 42171415166 SUCCESS on Linux and Windows, including stress checks (32-test suite; POSIX launcher test correctly skipped on Windows). Installed Nautilus launcher no longer cd's to project. Source ZIP extraction tests passed, no dependency installation.
 
 2026-11-06: User requested back/previous controls; implemented paired undo/redo (เลิกทำ/ทำซ้ำ), Ctrl+Z/Ctrl+Y/Ctrl+Shift+Z. Two redo tests first failed missing method; added new-edit branch invalidation and saved revision restoration checks. No dependencies added. 1.0.3 verification pending.
+
+1.0.3 completed: python3 -m unittest discover -s tests -v passed 34 tests exit 0 locally. CI 42171962932 SUCCESS on Linux/Windows including stress check. Published stable source release https://github.com/n0ngXarm/GETEdit/releases/tag/v1.0.3 at d398dde62c5753d9f280b54b491d956973f0c8c4. No dependencies installed.
