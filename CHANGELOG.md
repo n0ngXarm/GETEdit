@@ -1,5 +1,10 @@
 # Changes
 
+## 1.0.3
+
+- Add Redo button and Ctrl+Y / Ctrl+Shift+Z for undone page operations.
+- New edits clear redo history; undo/redo preserve saved-revision tracking.
+
 ## 1.0.2
 
 - Fix first-open failure from Nautilus: preserve caller directory and resolve absolute selections/file URIs before import.

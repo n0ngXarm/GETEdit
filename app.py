@@ -8,7 +8,7 @@ from pathlib import Path
 import pymupdf
 from storage import write_new_file
 
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 from PySide6.QtCore import Qt, QSize, Signal, QTimer, QProcess
 from PySide6.QtGui import QImage, QPixmap, QIcon, QColor, QPainter, QPen
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
@@ -214,6 +214,7 @@ class Window(QMainWindow):
         self.document = pymupdf.open()
         self.sources = set()
         self.history = []
+        self.future = []
         self.busy = False
         self.import_job = None
         self.import_folder = None
@@ -243,7 +244,11 @@ class Window(QMainWindow):
         self.remove = QPushButton('ลบหน้า'); self.remove.clicked.connect(self.delete_pages)
         ribbon_layout.addWidget(self.remove)
         self.back = QPushButton('เลิกทำ'); self.back.clicked.connect(self.undo)
-        ribbon_layout.addWidget(self.back); ribbon_layout.addStretch()
+        ribbon_layout.addWidget(self.back)
+        self.forward = QPushButton('ทำซ้ำ'); self.forward.clicked.connect(self.redo)
+        self.back.setToolTip('เลิกทำขั้นตอนล่าสุด (Ctrl+Z)')
+        self.forward.setToolTip('ทำขั้นตอนที่เพิ่งเลิกทำอีกครั้ง (Ctrl+Y)')
+        ribbon_layout.addWidget(self.forward); ribbon_layout.addStretch()
         self.grid_button = QPushButton('ดูทุกหน้า')
         self.detail_button = QPushButton('อ่านทีละหน้า')
         for button in (self.grid_button, self.detail_button): button.setCheckable(True)
@@ -281,7 +286,7 @@ class Window(QMainWindow):
         self.summary.setStyleSheet('padding:4px 8px; background:white; border-top:1px solid #ccd5df;')
         layout.addWidget(self.summary)
         from PySide6.QtGui import QShortcut, QKeySequence
-        for key, callback in [('Delete',self.delete_pages),('Ctrl+Z',self.undo),('Ctrl+O',self.choose),('Ctrl+Shift+S',self.export)]:
+        for key, callback in [('Delete',self.delete_pages),('Ctrl+Z',self.undo),('Ctrl+Y',self.redo),('Ctrl+Shift+Z',self.redo),('Ctrl+O',self.choose),('Ctrl+Shift+S',self.export)]:
             shortcut=QShortcut(QKeySequence(key),self);shortcut.activated.connect(callback)
         self.set_grid_view(True)
         self.update_controls()
@@ -332,6 +337,7 @@ class Window(QMainWindow):
         self.remove.setEnabled(not self.busy and bool(self.pages.selectedItems()))
         self.save.setEnabled(not self.busy and bool(len(self.document)))
         self.back.setEnabled(not self.busy and bool(self.history))
+        self.forward.setEnabled(not self.busy and bool(self.future))
 
     def mark_changed(self):
         self.serial += 1
@@ -342,6 +348,7 @@ class Window(QMainWindow):
         return (self.document.tobytes() if len(self.document) else None, set(self.sources), self.pages.currentRow(), self.revision)
 
     def remember(self, state):
+        self.future.clear()
         self.history.append(state)
         # Keep at most ten operations and 128 MB of PDF snapshots.
         while len(self.history)>10 or (len(self.history)>1 and sum(len(s[0] or b'') for s in self.history)>128*1024*1024):
@@ -349,7 +356,16 @@ class Window(QMainWindow):
 
     def undo(self):
         if self.busy or not self.history:return
-        data, sources, selected, revision=self.history.pop()
+        self.future.append(self.snapshot())
+        self.restore_state(self.history.pop())
+
+    def redo(self):
+        if self.busy or not self.future:return
+        self.history.append(self.snapshot())
+        self.restore_state(self.future.pop())
+
+    def restore_state(self, state):
+        data, sources, selected, revision=state
         self.document.close()
         self.document=pymupdf.open(stream=data,filetype='pdf') if data else pymupdf.open()
         self.sources=sources;self.revision=revision

@@ -45,3 +45,5 @@ Release completed: https://github.com/n0ngXarm/GETEdit/releases/tag/v1.0.0 (stab
 CI 42171209057: Linux passed; Windows startup path assertions exposed canonicalization changing valid 8.3 directory spellings. Startup now preserves supplied absolute spelling via absolute(), while import canonicalization remains in begin_import. No assertions removed or weakened.
 
 1.0.2 complete: stable release https://github.com/n0ngXarm/GETEdit/releases/tag/v1.0.2 targets 3bd5b30c6f11ec7dbf747efe230fe21b69439309. CI 42171415166 SUCCESS on Linux and Windows, including stress checks (32-test suite; POSIX launcher test correctly skipped on Windows). Installed Nautilus launcher no longer cd's to project. Source ZIP extraction tests passed, no dependency installation.
+
+2026-11-06: User requested back/previous controls; implemented paired undo/redo (เลิกทำ/ทำซ้ำ), Ctrl+Z/Ctrl+Y/Ctrl+Shift+Z. Two redo tests first failed missing method; added new-edit branch invalidation and saved revision restoration checks. No dependencies added. 1.0.3 verification pending.

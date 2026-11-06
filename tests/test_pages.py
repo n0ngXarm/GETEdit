@@ -151,3 +151,19 @@ class PageManagerTests(unittest.TestCase):
         self.assertNotIn('ดับเบิลคลิก',self.window.hint.text())
         self.window.set_grid_view(True)
         self.assertIn('ดับเบิลคลิก',self.window.hint.text())
+
+    def test_redo_and_new_change_clears_redo(self):
+        self.window.pages.setCurrentRow(1);self.window.delete_pages()
+        self.window.undo();self.window.redo()
+        self.assertEqual(self.texts(),['ONE','THREE','FOUR'])
+        self.window.undo()
+        self.window.reorder_pages([3,0,1,2])
+        self.window.redo()
+        self.assertEqual(self.texts(),['FOUR','ONE','TWO','THREE'])
+        self.assertFalse(self.window.forward.isEnabled())
+
+    def test_redo_restores_saved_revision(self):
+        self.window.reorder_pages([3,0,1,2])
+        self.window.saved_revision=self.window.revision;self.window.changed=False
+        self.window.undo();self.assertTrue(self.window.changed)
+        self.window.redo();self.assertFalse(self.window.changed)
