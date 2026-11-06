@@ -57,3 +57,5 @@ CI 42171209057: Linux passed; Windows startup path assertions exposed canonicali
 2026-11-06: User requested copy. Added selected-page copy/paste using PDF clipboard MIME, Ctrl+C/Ctrl+V and toolbar buttons; paste after current page or into empty document, preserves copied bytes after source edits and supports undo/redo. Added shortcuts to ? only. Two focused tests failed missing copy_pages before implementation. 1.0.5 validation pending; no dependencies added.
 
 Copy/paste validation: initial full run printed 36 tests OK but exited 139; reproduced with minimal Python-created QMimeData clipboard teardown. Switched to Qt-native-created MIME ownership via empty QTextEdit selection; no clipboard clearing or test assertions removed. Added subprocess exit regression. Full python3 -m unittest discover -s tests -v now passes 37 tests with exit 0. CI and release pending.
+
+1.0.5 complete: CI 42173481471 SUCCESS Linux/Windows including stress; 37-test suite and clipboard subprocess-exit regression pass exit 0. Stable source release https://github.com/n0ngXarm/GETEdit/releases/tag/v1.0.5 targets 42965f2cf0903e1aeebc1c0ca0353711348f7246. No runtime dependencies installed.
