@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """Convert supported local documents into PDF bytes without changing originals."""
 import shutil
 import subprocess
@@ -22,6 +23,7 @@ def convert_file(path):
         # Qt's decoder supports multi-frame TIFF and normalizes images for MuPDF.
         from PySide6.QtGui import QImageReader
         from PySide6.QtCore import QBuffer, QByteArray, QIODevice
+        QImageReader.setAllocationLimit(128)
         reader = QImageReader(str(path)); reader.setAutoTransform(True)
         with pymupdf.open() as result:
             frames = max(1, reader.imageCount())
@@ -51,9 +53,12 @@ def convert_file(path):
         with tempfile.TemporaryDirectory(prefix='getedit-') as tmp:
             root = Path(tmp); inputs = root/'input'; inputs.mkdir()
             copy = inputs/('document'+suffix); shutil.copy2(path, copy)
-            process = subprocess.run([executable, '-env:UserInstallation='+(root/'profile').as_uri(),
-                '--headless', '--convert-to', 'pdf', '--outdir', str(root), str(copy)],
-                capture_output=True, timeout=90)
+            try:
+                process = subprocess.run([executable, '-env:UserInstallation='+(root/'profile').as_uri(),
+                    '--headless', '--convert-to', 'pdf', '--outdir', str(root), str(copy)],
+                    capture_output=True, timeout=90)
+            except subprocess.TimeoutExpired as error:
+                raise ValueError('LibreOffice แปลงไฟล์เกิน 90 วินาที กรุณาส่งออกเป็น PDF ก่อน') from error
             output = root/'document.pdf'
             if process.returncode or not output.is_file():
                 raise ValueError('แปลงเอกสารด้วย LibreOffice ไม่สำเร็จ ลองส่งออกเป็น PDF ก่อน')

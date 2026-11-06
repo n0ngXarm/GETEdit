@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-only
 """Install only the Nautilus launcher; never install dependencies."""
 import os
 import shlex

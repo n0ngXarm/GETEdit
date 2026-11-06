@@ -120,3 +120,25 @@ class PageManagerTests(unittest.TestCase):
         self.assertEqual(self.texts(), ['ONE', 'TWO', 'FOUR', 'THREE'])
         self.window.undo()
         self.assertEqual(self.texts(), ['ONE', 'TWO', 'THREE', 'FOUR'])
+
+    def test_pointer_drag_and_escape_cancel(self):
+        from PySide6.QtCore import Qt, QPoint
+        from PySide6.QtTest import QTest
+        self.window.show();self.app.processEvents()
+        pages=self.window.pages;pages.setCurrentRow(0)
+        source=pages.visualItemRect(pages.item(0)).center()
+        rect=pages.visualItemRect(pages.item(2))
+        target=QPoint(rect.right()-3,rect.center().y())
+        QTest.mousePress(pages.viewport(),Qt.MouseButton.LeftButton,pos=source)
+        QTest.mouseMove(pages.viewport(),source+QPoint(30,0))
+        QTest.mouseMove(pages.viewport(),target)
+        QTest.mouseRelease(pages.viewport(),Qt.MouseButton.LeftButton,pos=target)
+        self.assertEqual(self.texts(),['TWO','THREE','ONE','FOUR'])
+        self.window.undo()
+        pages.setCurrentRow(0)
+        source=pages.visualItemRect(pages.item(0)).center()
+        QTest.mousePress(pages.viewport(),Qt.MouseButton.LeftButton,pos=source)
+        QTest.mouseMove(pages.viewport(),source+QPoint(30,0))
+        QTest.keyClick(pages,Qt.Key.Key_Escape)
+        QTest.mouseRelease(pages.viewport(),Qt.MouseButton.LeftButton,pos=target)
+        self.assertEqual(self.texts(),['ONE','TWO','THREE','FOUR'])
