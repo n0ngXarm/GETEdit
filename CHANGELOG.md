@@ -1,5 +1,11 @@
 # Changes
 
+## 1.0.5
+
+- Add selected-page Copy/Paste via toolbar and Ctrl+C/Ctrl+V.
+- Paste after current page or into an empty document, with undo/redo.
+- Document shortcuts in ? help; copy preserves the original page data in clipboard.
+
 ## 1.0.4
 
 - Put shortcut/mouse guidance in the top-right ? help dialog, also opened by F1.

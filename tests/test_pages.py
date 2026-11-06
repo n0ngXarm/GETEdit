@@ -167,3 +167,30 @@ class PageManagerTests(unittest.TestCase):
         self.window.saved_revision=self.window.revision;self.window.changed=False
         self.window.undo();self.assertTrue(self.window.changed)
         self.window.redo();self.assertFalse(self.window.changed)
+
+    def test_copy_paste_multiple_pages_and_undo(self):
+        self.window.pages.clearSelection()
+        for index in [0,2]:self.window.pages.item(index).setSelected(True)
+        before=len(self.window.history)
+        self.window.copy_pages()
+        self.assertEqual(len(self.window.history),before)
+        self.window.pages.setCurrentRow(1)
+        self.window.paste_pages()
+        self.assertEqual(self.texts(),['ONE','TWO','ONE','THREE','THREE','FOUR'])
+        self.assertEqual(len(self.window.pages.selectedItems()),2)
+        self.window.undo();self.assertEqual(self.texts(),['ONE','TWO','THREE','FOUR'])
+        self.window.redo();self.assertEqual(self.texts(),['ONE','TWO','ONE','THREE','THREE','FOUR'])
+        self.assertEqual(self.path.read_bytes(),self.original)
+
+    def test_paste_into_empty_document_after_copy(self):
+        self.window.pages.setCurrentRow(1);self.window.copy_pages()
+        self.window.pages.selectAll();self.window.delete_pages()
+        self.window.paste_pages()
+        self.assertEqual(self.texts(),['TWO'])
+
+    def test_clipboard_copy_process_exits_cleanly(self):
+        import subprocess, sys
+        environment=os.environ.copy();environment['QT_QPA_PLATFORM']='offscreen'
+        script='from app import *; app=QApplication([]); w=Window(); w.document.new_page(); w.refresh(0); w.copy_pages(); w.changed=False; w.close()'
+        result=subprocess.run([sys.executable,'-c',script],cwd=Path(__file__).resolve().parents[1],env=environment,capture_output=True,text=True,timeout=15)
+        self.assertEqual(result.returncode,0,result.stderr)

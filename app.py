@@ -8,11 +8,11 @@ from pathlib import Path
 import pymupdf
 from storage import write_new_file
 
-__version__ = "1.0.4"
+__version__ = "1.0.5"
 from PySide6.QtCore import Qt, QSize, Signal, QTimer, QProcess
 from PySide6.QtGui import QImage, QPixmap, QIcon, QColor, QPainter, QPen
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
-    QHBoxLayout, QPushButton, QLabel, QFileDialog, QMessageBox, QListWidget, QListWidgetItem, QSplitter, QGraphicsView, QGraphicsScene, QAbstractItemView, QListView, QDialog, QDialogButtonBox)
+    QHBoxLayout, QPushButton, QLabel, QFileDialog, QMessageBox, QListWidget, QListWidgetItem, QSplitter, QGraphicsView, QGraphicsScene, QAbstractItemView, QListView, QDialog, QDialogButtonBox, QTextEdit)
 
 
 def startup_paths(arguments, environ=None, cwd=None):
@@ -243,6 +243,9 @@ class Window(QMainWindow):
         ribbon_layout.addWidget(self.add)
         self.remove = QPushButton('ลบหน้า'); self.remove.clicked.connect(self.delete_pages)
         ribbon_layout.addWidget(self.remove)
+        self.copy_button=QPushButton('คัดลอก');self.copy_button.clicked.connect(self.copy_pages)
+        self.paste_button=QPushButton('วาง');self.paste_button.clicked.connect(self.paste_pages)
+        ribbon_layout.addWidget(self.copy_button);ribbon_layout.addWidget(self.paste_button)
         self.back = QPushButton('เลิกทำ'); self.back.clicked.connect(self.undo)
         ribbon_layout.addWidget(self.back)
         self.forward = QPushButton('ทำซ้ำ'); self.forward.clicked.connect(self.redo)
@@ -293,8 +296,9 @@ class Window(QMainWindow):
         self.summary.setStyleSheet('padding:4px 8px; background:white; border-top:1px solid #ccd5df;')
         layout.addWidget(self.summary)
         from PySide6.QtGui import QShortcut, QKeySequence
-        for key, callback in [('Delete',self.delete_pages),('Ctrl+Z',self.undo),('Ctrl+Y',self.redo),('Ctrl+Shift+Z',self.redo),('Ctrl+O',self.choose),('Ctrl+Shift+S',self.export),('F1',self.show_help)]:
+        for key, callback in [('Delete',self.delete_pages),('Ctrl+Z',self.undo),('Ctrl+Y',self.redo),('Ctrl+Shift+Z',self.redo),('Ctrl+O',self.choose),('Ctrl+C',self.copy_pages),('Ctrl+V',self.paste_pages),('Ctrl+Shift+S',self.export),('F1',self.show_help)]:
             shortcut=QShortcut(QKeySequence(key),self);shortcut.activated.connect(callback)
+        QApplication.clipboard().dataChanged.connect(self.update_controls)
         self.set_grid_view(True)
         self.update_controls()
 
@@ -309,6 +313,8 @@ class Window(QMainWindow):
                 <table cellpadding="7">
                 <tr><td><b>Ctrl + O</b></td><td>เพิ่มไฟล์</td></tr>
                 <tr><td><b>Ctrl + Shift + S</b></td><td>บันทึกเป็น PDF ใหม่</td></tr>
+                <tr><td><b>Ctrl + C</b></td><td>คัดลอกหน้าที่เลือก</td></tr>
+                <tr><td><b>Ctrl + V</b></td><td>วางสำเนาต่อจากหน้าปัจจุบัน</td></tr>
                 <tr><td><b>Delete</b></td><td>ลบหน้าที่เลือก</td></tr>
                 <tr><td><b>Ctrl + Z</b></td><td>เลิกทำ</td></tr>
                 <tr><td><b>Ctrl + Y / Ctrl + Shift + Z</b></td><td>ทำซ้ำ</td></tr>
@@ -374,6 +380,9 @@ class Window(QMainWindow):
 
     def update_controls(self):
         self.remove.setEnabled(not self.busy and bool(self.pages.selectedItems()))
+        self.copy_button.setEnabled(not self.busy and bool(self.pages.selectedItems()))
+        mime=QApplication.clipboard().mimeData()
+        self.paste_button.setEnabled(not self.busy and mime is not None and (mime.hasFormat('application/x-getedit-pages') or mime.hasFormat('application/pdf')))
         self.save.setEnabled(not self.busy and bool(len(self.document)))
         self.back.setEnabled(not self.busy and bool(self.history))
         self.forward.setEnabled(not self.busy and bool(self.future))
@@ -420,6 +429,47 @@ class Window(QMainWindow):
         self.remember(state)
         self.mark_changed()
         self.refresh(selected)
+
+    def copy_pages(self):
+        if self.busy:return
+        indices=sorted(self.pages.row(item) for item in self.pages.selectedItems())
+        if not indices:return
+        with pymupdf.open() as copied:
+            for index in indices:copied.insert_pdf(self.document,from_page=index,to_page=index)
+            data=copied.tobytes()
+        # Native Qt-created MIME avoids a PySide6 6.11 offscreen teardown
+        # crash with Python-created QMimeData transferred to the clipboard.
+        mime_owner=QTextEdit()
+        mime=mime_owner.createMimeDataFromSelection()
+        mime.setData('application/x-getedit-pages',data)
+        mime.setData('application/pdf',data)
+        QApplication.clipboard().setMimeData(mime)
+        self.update_controls()
+
+    def paste_pages(self):
+        if self.busy:return
+        mime=QApplication.clipboard().mimeData()
+        if mime is None:return
+        format_name=next((name for name in ('application/x-getedit-pages','application/pdf') if mime.hasFormat(name)),None)
+        if format_name is None:return
+        candidate=None
+        try:
+            state=self.snapshot()
+            data=bytes(mime.data(format_name))
+            candidate=pymupdf.open(stream=state[0],filetype='pdf') if state[0] else pymupdf.open()
+            position=self.pages.currentRow()+1 if self.pages.currentRow()>=0 else len(candidate)
+            with pymupdf.open(stream=data,filetype='pdf') as copied:
+                if copied.needs_pass or not len(copied):raise ValueError('คลิปบอร์ดไม่มีหน้า PDF ที่วางได้')
+                count=len(copied)
+                candidate.insert_pdf(copied,start_at=position)
+            self.document.close();self.document=candidate;candidate=None
+            self.remember(state);self.mark_changed();self.refresh(position)
+            self.pages.blockSignals(True);self.pages.clearSelection()
+            for index in range(position,position+count):self.pages.item(index).setSelected(True)
+            self.pages.blockSignals(False);self.update_controls()
+        except Exception as error:
+            if candidate is not None:candidate.close()
+            QMessageBox.warning(self,'วางหน้าไม่ได้',str(error))
 
     def delete_pages(self):
         if self.busy:return
