@@ -4,10 +4,10 @@ import sys
 import tempfile
 from pathlib import Path
 import pymupdf
-from PySide6.QtCore import Qt, QSize, QEventLoop
-from PySide6.QtGui import QImage, QPixmap, QIcon, QColor, QPainter
+from PySide6.QtCore import Qt, QSize, QEventLoop, Signal
+from PySide6.QtGui import QImage, QPixmap, QIcon, QColor, QPainter, QDrag
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
-    QHBoxLayout, QPushButton, QLabel, QFileDialog, QMessageBox, QListWidget, QListWidgetItem, QSplitter, QComboBox, QGraphicsView, QGraphicsScene, QAbstractItemView)
+    QHBoxLayout, QPushButton, QLabel, QFileDialog, QMessageBox, QListWidget, QListWidgetItem, QSplitter, QGraphicsView, QGraphicsScene, QAbstractItemView)
 
 
 def inspect_pdf(path):
@@ -44,6 +44,53 @@ def insert_pdf(main, extra, before, output):
         return n + added
     finally:
         os.unlink(temp)
+
+
+class PageList(QListWidget):
+    orderRequested = Signal(list, int)
+
+    def __init__(self):
+        super().__init__()
+        self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self.setDefaultDropAction(Qt.DropAction.MoveAction)
+        self.setDropIndicatorShown(True)
+        self.setDragDropOverwriteMode(False)
+        self.setAutoScroll(True)
+        self.setToolTip('กดค้างที่รูปหน้า แล้วลากขึ้นหรือลงเพื่อย้ายลำดับ')
+
+    def startDrag(self, supported_actions):
+        # Own the drag so QListWidget does not delete source rows after our
+        # PDF-backed reorder rebuilds the thumbnails.
+        indices = self.selectedIndexes()
+        if not indices: return
+        drag = QDrag(self)
+        drag.setMimeData(self.model().mimeData(indices))
+        current = self.currentItem()
+        if current:
+            drag.setPixmap(current.icon().pixmap(90, 125))
+        drag.exec(Qt.DropAction.MoveAction)
+
+    def move_selection(self, destination):
+        selected = sorted(self.row(item) for item in self.selectedItems())
+        if not selected: return
+        remaining = [row for row in range(self.count()) if row not in selected]
+        insertion = destination - sum(row < destination for row in selected)
+        order = remaining[:insertion] + selected + remaining[insertion:]
+        self.orderRequested.emit(order, insertion)
+
+    def dropEvent(self, event):
+        if event.source() is not self:
+            event.ignore(); return
+        position = event.position().toPoint()
+        target = self.indexAt(position)
+        if target.isValid():
+            rect = self.visualRect(target)
+            destination = target.row() + (position.y() >= rect.center().y())
+        else:
+            destination = self.count()
+        self.move_selection(destination)
+        event.setDropAction(Qt.DropAction.MoveAction)
+        event.accept()
 
 
 class PageView(QGraphicsView):
@@ -98,7 +145,6 @@ class Window(QMainWindow):
             QListWidget {background:white; border:1px solid #c5ceda; padding:6px;}
             QListWidget::item {padding:9px; border-bottom:1px solid #e3e8ef;}
             QListWidget::item:selected {background:#d9eaff; color:#153b68; border:1px solid #6c9bd0;}
-            QComboBox {padding:8px; background:white; color:#25354a;}
         """)
         root = QWidget(); self.setCentralWidget(root)
         layout = QVBoxLayout(root); layout.setContentsMargins(0,0,0,0); layout.setSpacing(0)
@@ -110,24 +156,21 @@ class Window(QMainWindow):
         self.add = QPushButton('＋ เพิ่มไฟล์'); self.add.clicked.connect(self.choose)
         self.add.setStyleSheet('background:#205b97; color:white; font-weight:600; padding:13px 20px;')
         ribbon_layout.addWidget(self.add)
-        placement_box = QVBoxLayout(); placement_box.addWidget(QLabel('ตำแหน่งที่เพิ่ม'))
-        self.placement = QComboBox()
-        self.placement.addItems(['ท้ายเอกสาร', 'ก่อนหน้าที่เลือก', 'หลังหน้าที่เลือก'])
-        placement_box.addWidget(self.placement); ribbon_layout.addLayout(placement_box)
         self.remove = QPushButton('ลบหน้าที่เลือก'); self.remove.clicked.connect(self.delete_pages)
         ribbon_layout.addWidget(self.remove)
         self.back = QPushButton('↶ ย้อนกลับ'); self.back.clicked.connect(self.undo)
         ribbon_layout.addWidget(self.back); ribbon_layout.addStretch()
         self.save = QPushButton('บันทึก PDF ใหม่'); self.save.clicked.connect(self.export)
         ribbon_layout.addWidget(self.save); layout.addWidget(ribbon)
-        hint = QLabel('  เพิ่มไฟล์เพื่อเริ่มต้น • คลิกรูปหน้าเพื่อดู • Ctrl / Shift เลือกหลายหน้า แล้วกดลบ')
+        hint = QLabel('  เพิ่มไฟล์ → กดค้างที่รูปหน้าแล้วลากจัดลำดับ → บันทึก PDF ใหม่ • Delete ลบหน้า')
         hint.setStyleSheet('padding:10px; border-bottom:1px solid #ccd5df; background:white;')
         layout.addWidget(hint)
         split = QSplitter()
         sidebar = QWidget(); left = QVBoxLayout(sidebar); left.setContentsMargins(12,12,6,12)
         left.addWidget(QLabel('หน้าเอกสาร'))
-        self.pages = QListWidget(); self.pages.setIconSize(QSize(110,150))
+        self.pages = PageList(); self.pages.setIconSize(QSize(110,150))
         self.pages.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.pages.orderRequested.connect(self.reorder_pages)
         self.pages.currentRowChanged.connect(self.preview)
         self.pages.itemSelectionChanged.connect(self.update_controls)
         left.addWidget(self.pages); split.addWidget(sidebar)
@@ -168,6 +211,16 @@ class Window(QMainWindow):
         self.sources=sources;self.changed=changed
         self.refresh(selected)
 
+    def reorder_pages(self, order, selected=0):
+        if order == list(range(len(self.document))): return
+        if sorted(order) != list(range(len(self.document))):
+            raise ValueError('ลำดับหน้าไม่ถูกต้อง')
+        state = self.snapshot()
+        self.document.select(order)
+        self.remember(state)
+        self.changed = True
+        self.refresh(selected)
+
     def delete_pages(self):
         indices=sorted(self.pages.row(item) for item in self.pages.selectedItems())
         if not indices:return
@@ -185,8 +238,7 @@ class Window(QMainWindow):
 
     def add_paths(self, paths):
         from converter import convert_file
-        cursor=self.pages.currentRow();mode=self.placement.currentIndex()
-        position=len(self.document) if mode==0 or cursor<0 else cursor+(mode==2)
+        position=len(self.document)
         first=position; state=self.snapshot(); errors=[];added=False
         self.centralWidget().setEnabled(False)
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
@@ -242,7 +294,7 @@ class Window(QMainWindow):
         except Exception as error:QMessageBox.warning(self,'บันทึกไม่สำเร็จ',str(error))
 
     def closeEvent(self,event):
-        if self.changed and QMessageBox.question(self,'ยังไม่ได้บันทึก','ปิดโดยไม่บันทึกการเพิ่ม/ลบหน้าหรือไม่?',QMessageBox.StandardButton.Yes|QMessageBox.StandardButton.No,QMessageBox.StandardButton.No)!=QMessageBox.StandardButton.Yes:
+        if self.changed and QMessageBox.question(self,'ยังไม่ได้บันทึก','ปิดโดยไม่บันทึกการจัดหน้าหรือไม่?',QMessageBox.StandardButton.Yes|QMessageBox.StandardButton.No,QMessageBox.StandardButton.No)!=QMessageBox.StandardButton.Yes:
             event.ignore();return
         event.accept()
 
