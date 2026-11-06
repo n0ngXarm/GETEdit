@@ -67,3 +67,5 @@ Public presentation complete: https://github.com/n0ngXarm/GETEdit README publish
 2026-11-06: User prioritized Windows installation stability; npm deferred. Prepared per-user Inno installer and CI verification of installed runtime, reinstall/update, shortcuts, uninstall registry and user fixture retention. No host dependencies or security settings changed. CI results pending; unsigned, no real Windows desktop acceptance yet.
 
 Local regression: `python3 -m unittest discover -s tests -v` passed (exit 0): 38 tests. GETEdit worker command test first failed; Allzip overwrite-failure and empty-folder tests first failed before fixes. Windows built-binary validation pending.
+
+CI 42184976268 passed installed binary import/export, update and uninstall; Defender custom scan completed. Strengthened final installed-runtime check to clear QT_QPA_PLATFORM and load the native Windows Qt plugin (unit tests remain offscreen); native rerun required before publishing.

@@ -14,6 +14,10 @@ def run(args, timeout=180):
     diagnostics=root/'build/windows-runtime-error.txt'
     diagnostics.parent.mkdir(parents=True,exist_ok=True)
     env=dict(os.environ,WINDOWS_APP_DIAGNOSTICS=str(diagnostics))
+    # Exercise the native Windows Qt plugin, independently of offscreen unit tests.
+    env.pop('QT_QPA_PLATFORM',None)
+    env.pop('PYTHONHOME',None)
+    env.pop('PYTHONPATH',None)
     try:subprocess.run(list(map(str,args)),check=True,timeout=timeout,env=env)
     except Exception:
         if diagnostics.exists():print(diagnostics.read_text(encoding='utf-8'),flush=True)
