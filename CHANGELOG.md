@@ -1,5 +1,12 @@
 # Changes
 
+## 1.0.1
+
+- Shorter Thai command labels with guidance matched to grid/reading mode.
+- Removed duplicate heading and reduced toolbar/status padding.
+- Reading sidebar stays narrow on wide screens; thumbnail rows follow page aspect ratio.
+- Landscape page grids use shorter tiles instead of portrait-sized empty space.
+
 ## 1.0.0
 
 - Page-grid workflow: add files, drag one or several pages, remove pages and undo.

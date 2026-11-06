@@ -8,7 +8,7 @@ from pathlib import Path
 import pymupdf
 from storage import write_new_file
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 from PySide6.QtCore import Qt, QSize, Signal, QTimer, QProcess
 from PySide6.QtGui import QImage, QPixmap, QIcon, QColor, QPainter, QPen
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
@@ -199,46 +199,43 @@ class Window(QMainWindow):
         self.close_after_import = False
         self.changed = False
         self.revision = self.saved_revision = self.serial = 0
-        self.setWindowTitle(f'GETEdit {__version__} — เพิ่มและลบหน้า PDF')
+        self.setWindowTitle(f'GETEdit {__version__} — จัดหน้า PDF')
         self.resize(1120, 840)
         self.setStyleSheet("""
             QMainWindow {background:#eef1f5; color:#25354a;}
             QLabel {color:#25354a;}
-            QPushButton {padding:9px 14px; border:1px solid #c5ceda; border-radius:4px; background:#ffffff; color:#25354a;}
+            QPushButton {padding:5px 10px; border:1px solid #c5ceda; border-radius:4px; background:#ffffff; color:#25354a;}
             QPushButton:hover {background:#e3efff; border-color:#3275bd;}
             QPushButton:checked {background:#d9eaff; border-color:#3275bd; color:#153b68;}
             QPushButton:disabled {color:#8a96a6; background:#edf0f4;}
-            QListWidget {background:white; border:1px solid #c5ceda; padding:6px;}
-            QListWidget::item {padding:9px; border-bottom:1px solid #e3e8ef;}
+            QListWidget {background:white; border:1px solid #c5ceda; padding:3px;}
+            QListWidget::item {padding:4px; border-bottom:1px solid #e3e8ef;}
             QListWidget::item:selected {background:#d9eaff; color:#153b68; border:1px solid #6c9bd0;}
         """)
         root = QWidget(); self.setCentralWidget(root)
         layout = QVBoxLayout(root); layout.setContentsMargins(0,0,0,0); layout.setSpacing(0)
-        heading = QLabel('  GETEdit   |   เพิ่มและลบหน้า PDF')
-        heading.setStyleSheet('background:#205b97; color:white; font-size:19px; font-weight:600; padding:16px;')
-        layout.addWidget(heading)
         ribbon = QWidget(); ribbon.setStyleSheet('background:#f7f9fc;')
-        ribbon_layout = QHBoxLayout(ribbon); ribbon_layout.setContentsMargins(16,12,16,12)
-        self.add = QPushButton('＋ เพิ่มไฟล์'); self.add.clicked.connect(self.choose)
-        self.add.setStyleSheet('background:#205b97; color:white; font-weight:600; padding:13px 20px;')
+        ribbon_layout = QHBoxLayout(ribbon); ribbon_layout.setContentsMargins(8,6,8,6)
+        self.add = QPushButton('เพิ่มไฟล์…'); self.add.clicked.connect(self.choose)
+        self.add.setStyleSheet('background:#205b97; color:white; font-weight:600; padding:6px 14px;')
         ribbon_layout.addWidget(self.add)
-        self.remove = QPushButton('ลบหน้าที่เลือก'); self.remove.clicked.connect(self.delete_pages)
+        self.remove = QPushButton('ลบหน้า'); self.remove.clicked.connect(self.delete_pages)
         ribbon_layout.addWidget(self.remove)
-        self.back = QPushButton('↶ ย้อนกลับ'); self.back.clicked.connect(self.undo)
+        self.back = QPushButton('เลิกทำ'); self.back.clicked.connect(self.undo)
         ribbon_layout.addWidget(self.back); ribbon_layout.addStretch()
-        self.grid_button = QPushButton('▦ ตารางหน้า')
-        self.detail_button = QPushButton('ดูหน้าใหญ่')
+        self.grid_button = QPushButton('ดูทุกหน้า')
+        self.detail_button = QPushButton('อ่านทีละหน้า')
         for button in (self.grid_button, self.detail_button): button.setCheckable(True)
         self.grid_button.clicked.connect(lambda: self.set_grid_view(True))
         self.detail_button.clicked.connect(lambda: self.set_grid_view(False))
         ribbon_layout.addWidget(self.grid_button); ribbon_layout.addWidget(self.detail_button)
-        self.save = QPushButton('บันทึก PDF ใหม่'); self.save.clicked.connect(self.export)
+        self.save = QPushButton('บันทึกเป็น…'); self.save.clicked.connect(self.export)
         ribbon_layout.addWidget(self.save); layout.addWidget(ribbon)
-        hint = QLabel('  ลากรูปหน้าไปซ้าย–ขวาหรือข้ามแถวเพื่อเรียงใหม่ • ดับเบิลคลิกเพื่อดูหน้าใหญ่ • Ctrl / Shift เลือกหลายหน้า')
-        hint.setStyleSheet('padding:10px; border-bottom:1px solid #ccd5df; background:white;')
-        layout.addWidget(hint)
+        self.hint = QLabel()
+        self.hint.setStyleSheet('padding:4px 8px; border-bottom:1px solid #ccd5df; background:white;')
+        layout.addWidget(self.hint)
         split = QSplitter(); self.split = split
-        sidebar = QWidget(); left = QVBoxLayout(sidebar); left.setContentsMargins(12,12,6,12)
+        sidebar = QWidget(); self.sidebar=sidebar; left = QVBoxLayout(sidebar); left.setContentsMargins(6,6,3,6)
         left.addWidget(QLabel('หน้าเอกสาร'))
         self.pages = PageList(); self.pages.setIconSize(QSize(110,150))
         self.pages.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
@@ -252,15 +249,15 @@ class Window(QMainWindow):
         self.pages.verticalScrollBar().valueChanged.connect(self.schedule_thumbnails)
         self.pages.viewportChanged.connect(self.schedule_thumbnails)
         left.addWidget(self.pages); split.addWidget(sidebar)
-        panel=QWidget(); self.detail_panel=panel; box=QVBoxLayout(panel);box.setContentsMargins(8,12,12,12)
+        panel=QWidget(); self.detail_panel=panel; box=QVBoxLayout(panel);box.setContentsMargins(4,6,6,6)
         view_bar=QHBoxLayout();self.caption=QLabel('ยังไม่มีเอกสาร');view_bar.addWidget(self.caption);view_bar.addStretch()
         self.viewer=PageView()
-        for text, callback in [('−',lambda:self.viewer.zoom(.8)), ('＋',lambda:self.viewer.zoom(1.25)), ('พอดีหน้า',self.viewer.fit_page)]:
+        for text, callback in [('−',lambda:self.viewer.zoom(.8)), ('＋',lambda:self.viewer.zoom(1.25)), ('พอดีหน้าต่าง',self.viewer.fit_page)]:
             button=QPushButton(text);button.clicked.connect(callback);view_bar.addWidget(button)
         box.addLayout(view_bar);box.addWidget(self.viewer,1);split.addWidget(panel)
         split.setSizes([230,890]);layout.addWidget(split,1)
-        self.summary=QLabel('  เริ่มต้น: กด ＋ เพิ่มไฟล์ หรือเปิดผ่านเมนู Scripts')
-        self.summary.setStyleSheet('padding:12px; background:white; border-top:1px solid #ccd5df;')
+        self.summary=QLabel('  กด “เพิ่มไฟล์…” เพื่อเริ่มจัดหน้า')
+        self.summary.setStyleSheet('padding:4px 8px; background:white; border-top:1px solid #ccd5df;')
         layout.addWidget(self.summary)
         from PySide6.QtGui import QShortcut, QKeySequence
         for key, callback in [('Delete',self.delete_pages),('Ctrl+Z',self.undo),('Ctrl+O',self.choose),('Ctrl+Shift+S',self.export)]:
@@ -271,25 +268,44 @@ class Window(QMainWindow):
     def set_grid_view(self, enabled):
         self.grid_button.setChecked(enabled); self.detail_button.setChecked(not enabled)
         self.detail_panel.setVisible(not enabled)
+        self.sidebar.setMinimumWidth(160)
+        self.sidebar.setMaximumWidth(16777215 if enabled else 228)
+        self.hint.setText('ลากรูปย่อเพื่อจัดลำดับ • ดับเบิลคลิกเพื่ออ่าน • Ctrl / Shift เลือกหลายหน้า' if enabled else 'คลิกรูปย่อด้านซ้ายเพื่อเปลี่ยนหน้า • ลากเพื่อย้าย • กด “ดูทุกหน้า” เพื่อจัดเรียงแบบตาราง')
         if enabled:
             self.pages.setViewMode(QListView.ViewMode.IconMode)
             self.pages.setFlow(QListView.Flow.LeftToRight)
             self.pages.setWrapping(True)
             self.pages.setResizeMode(QListView.ResizeMode.Adjust)
             self.pages.setIconSize(QSize(125,165))
-            self.pages.setGridSize(QSize(160,205))
+            self.pages.setGridSize(QSize(150,self.grid_height()))
         else:
             self.pages.setViewMode(QListView.ViewMode.ListMode)
             self.pages.setFlow(QListView.Flow.TopToBottom)
             self.pages.setWrapping(False)
             self.pages.setIconSize(QSize(110,150))
             self.pages.setGridSize(QSize())
-            self.split.setSizes([240,880])
+            self.split.setSizes([210,max(300,self.width()-210)])
         self.pages.setMovement(QListView.Movement.Static)
         self.pages.setDragDropMode(QAbstractItemView.DragDropMode.NoDragDrop)
+        self.size_page_items()
         self.pages.doItemsLayout()
         if not enabled: self.preview()
         self.schedule_thumbnails()
+
+    def grid_height(self):
+        heights=[min(165,125*page.rect.height/max(page.rect.width,1)) for page in self.document]
+        return max(106,int(max(heights,default=150))+26)
+
+    def size_page_items(self):
+        grid=self.grid_button.isChecked()
+        if grid:self.pages.setGridSize(QSize(150,self.grid_height()))
+        grid_height=self.grid_height() if grid else 0
+        for number,page in enumerate(self.document):
+            height=min(145,110*page.rect.height/max(page.rect.width,1))
+            self.pages.item(number).setSizeHint(QSize(140,grid_height if grid else max(68,int(height)+10)))
+
+    def status_text(self):
+        return f'{len(self.document)} หน้า • ไฟล์ต้นฉบับไม่เปลี่ยนแปลง'
 
     def update_controls(self):
         self.remove.setEnabled(not self.busy and bool(self.pages.selectedItems()))
@@ -378,7 +394,8 @@ class Window(QMainWindow):
             item.setSizeHint(QSize(140,190));self.pages.addItem(item)
         self.pages.setCurrentRow(max(0,min(selected,len(self.document)-1)) if len(self.document) else -1)
         self.pages.blockSignals(False)
-        self.summary.setText(f'  ทั้งหมด {len(self.document)} หน้า  |  ลำดับทางซ้ายคือลำดับที่จะบันทึก  |  เก็บไฟล์ต้นฉบับไว้ครบ')
+        self.size_page_items()
+        self.summary.setText(self.status_text())
         self.preview();self.update_controls();self.schedule_thumbnails()
 
     def schedule_thumbnails(self,*_):
@@ -403,7 +420,7 @@ class Window(QMainWindow):
     def begin_import(self, paths):
         if self.busy or not paths:return
         self.busy=True;self.thumb_timer.stop();self.centralWidget().setEnabled(False)
-        self.summary.setText('กำลังเพิ่มเอกสาร… หน้าต่างจะยังตอบสนองระหว่างแปลงไฟล์')
+        self.summary.setText('กำลังเตรียมหน้าเอกสาร…')
         self.import_paths=[str(Path(p).resolve()) for p in paths]
         self.import_output = ""
         self.import_folder=tempfile.TemporaryDirectory(prefix='getedit-import-',ignore_cleanup_errors=True)
@@ -482,7 +499,7 @@ class Window(QMainWindow):
             self.import_job.deleteLater();self.import_job=None
             self.import_folder.cleanup();self.import_folder=None
             self.busy=False;self.centralWidget().setEnabled(True);self.update_controls();self.schedule_thumbnails();self.preview()
-            if not self.close_after_import:self.summary.setText(f'  ทั้งหมด {len(self.document)} หน้า  |  เพิ่มไฟล์เสร็จแล้ว')
+            if not self.close_after_import:self.summary.setText(self.status_text())
             if errors:QMessageBox.warning(self,'บางไฟล์เพิ่มไม่ได้','\n'.join(errors))
             if self.close_after_import:
                 self.close_after_import=False;QTimer.singleShot(0,self.close)
@@ -491,7 +508,7 @@ class Window(QMainWindow):
         if self.busy:return
         index=self.pages.currentRow()
         if index<0:
-            self.viewer.clear();self.caption.setText('กด ＋ เพิ่มไฟล์ เพื่อเพิ่มหน้าเอกสาร');return
+            self.viewer.clear();self.caption.setText('เพิ่มไฟล์เพื่อเริ่มจัดหน้า');return
         if not self.grid_button.isChecked():
             try:self.viewer.show_page(self.document[index])
             except Exception as error:

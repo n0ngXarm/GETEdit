@@ -41,3 +41,9 @@ https://github.com/n0ngXarm/GETEdit/actions/runs/42163115484
 Linux source ZIP was extracted into a temporary directory and its included
 regression suite executed successfully. Both ZIP manifests were checked for
 required modules/license and exclusion of personal PDF/image files.
+
+## 1.0.1 UI patch
+
+25 local regression tests passed, including a 1920px reading-layout regression
+for sidebar width, thumbnail height and mode-specific hint. Grid/reading
+screenshots inspected with 18 landscape pages. No runtime dependencies changed.

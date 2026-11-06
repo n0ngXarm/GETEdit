@@ -142,3 +142,12 @@ class PageManagerTests(unittest.TestCase):
         QTest.keyClick(pages,Qt.Key.Key_Escape)
         QTest.mouseRelease(pages.viewport(),Qt.MouseButton.LeftButton,pos=target)
         self.assertEqual(self.texts(),['ONE','TWO','THREE','FOUR'])
+
+    def test_reading_layout_uses_compact_sidebar(self):
+        self.window.resize(1920,1080);self.window.show()
+        self.window.set_grid_view(False);self.app.processEvents()
+        self.assertLessEqual(self.window.pages.width(),240)
+        self.assertLess(self.window.pages.visualItemRect(self.window.pages.item(0)).height(),170)
+        self.assertNotIn('ดับเบิลคลิก',self.window.hint.text())
+        self.window.set_grid_view(True)
+        self.assertIn('ดับเบิลคลิก',self.window.hint.text())
