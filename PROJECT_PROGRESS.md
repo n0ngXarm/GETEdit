@@ -12,3 +12,5 @@ Next: owner chooses application license; verify on Windows and Linux desktops;
 prepare native distribution after approval of any required build dependencies.
 
 2026-11-06: Added Linux Nautilus Scripts installer matching existing FILE-to-file/Allzip/Send-to-device integration. App accepts selected paths via argv or Nautilus environment. Installer uses current Python and project path, checks dependencies, and never installs packages. Existing unit tests pass; isolated installer shell syntax and Thai path UI prefill pass with Qt offscreen (exit 0). Real Nautilus click workflow not yet verified.
+
+2026-11-06: Simplified page selection with clickable main-document thumbnails, two document previews, append button and explicit result page-count summary. Existing insertion tests pass; offscreen UI checks confirm thumbnail selection updates insertion position, both previews populate, append summary updates. Screenshot inspected. No dependencies added; Windows desktop still unverified.
