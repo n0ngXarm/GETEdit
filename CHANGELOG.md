@@ -1,5 +1,10 @@
 # Changes
 
+## 1.0.4
+
+- Put shortcut/mouse guidance in the top-right ? help dialog, also opened by F1.
+- Remove the instruction strip from the main document area.
+
 ## 1.0.3
 
 - Add Redo button and Ctrl+Y / Ctrl+Shift+Z for undone page operations.

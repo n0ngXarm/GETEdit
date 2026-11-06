@@ -148,9 +148,9 @@ class PageManagerTests(unittest.TestCase):
         self.window.set_grid_view(False);self.app.processEvents()
         self.assertLessEqual(self.window.pages.width(),240)
         self.assertLess(self.window.pages.visualItemRect(self.window.pages.item(0)).height(),170)
-        self.assertNotIn('ดับเบิลคลิก',self.window.hint.text())
+        self.assertTrue(self.window.hint.isHidden())
         self.window.set_grid_view(True)
-        self.assertIn('ดับเบิลคลิก',self.window.hint.text())
+        self.assertTrue(self.window.hint.isHidden())
 
     def test_redo_and_new_change_clears_redo(self):
         self.window.pages.setCurrentRow(1);self.window.delete_pages()

@@ -49,3 +49,5 @@ CI 42171209057: Linux passed; Windows startup path assertions exposed canonicali
 2026-11-06: User requested back/previous controls; implemented paired undo/redo (เลิกทำ/ทำซ้ำ), Ctrl+Z/Ctrl+Y/Ctrl+Shift+Z. Two redo tests first failed missing method; added new-edit branch invalidation and saved revision restoration checks. No dependencies added. 1.0.3 verification pending.
 
 1.0.3 completed: python3 -m unittest discover -s tests -v passed 34 tests exit 0 locally. CI 42171962932 SUCCESS on Linux/Windows including stress check. Published stable source release https://github.com/n0ngXarm/GETEdit/releases/tag/v1.0.3 at d398dde62c5753d9f280b54b491d956973f0c8c4. No dependencies installed.
+
+2026-11-06: User requested shortcuts in ? beside close area instead of printed on main screen. Added ? at far-right existing toolbar immediately below native close area, F1 shortcut and nonmodal Thai shortcut/mouse help dialog with Close/Esc. Hidden main instruction strip; no custom window decoration or dependencies added. Updated compact-layout test to require hidden strip in both modes, retaining width/height checks. 1.0.4 validation pending.

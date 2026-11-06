@@ -8,11 +8,11 @@ from pathlib import Path
 import pymupdf
 from storage import write_new_file
 
-__version__ = "1.0.3"
+__version__ = "1.0.4"
 from PySide6.QtCore import Qt, QSize, Signal, QTimer, QProcess
 from PySide6.QtGui import QImage, QPixmap, QIcon, QColor, QPainter, QPen
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
-    QHBoxLayout, QPushButton, QLabel, QFileDialog, QMessageBox, QListWidget, QListWidgetItem, QSplitter, QGraphicsView, QGraphicsScene, QAbstractItemView, QListView)
+    QHBoxLayout, QPushButton, QLabel, QFileDialog, QMessageBox, QListWidget, QListWidgetItem, QSplitter, QGraphicsView, QGraphicsScene, QAbstractItemView, QListView, QDialog, QDialogButtonBox)
 
 
 def startup_paths(arguments, environ=None, cwd=None):
@@ -256,10 +256,17 @@ class Window(QMainWindow):
         self.detail_button.clicked.connect(lambda: self.set_grid_view(False))
         ribbon_layout.addWidget(self.grid_button); ribbon_layout.addWidget(self.detail_button)
         self.save = QPushButton('บันทึกเป็น…'); self.save.clicked.connect(self.export)
-        ribbon_layout.addWidget(self.save); layout.addWidget(ribbon)
+        ribbon_layout.addWidget(self.save)
+        self.help_button = QPushButton('?')
+        self.help_button.setFixedWidth(30)
+        self.help_button.setAccessibleName('คีย์ลัดและวิธีใช้งาน')
+        self.help_button.setToolTip('คีย์ลัดและวิธีใช้งาน (F1)')
+        self.help_button.clicked.connect(self.show_help)
+        ribbon_layout.addWidget(self.help_button); layout.addWidget(ribbon)
+        self.help_dialog = None
         self.hint = QLabel()
         self.hint.setStyleSheet('padding:4px 8px; border-bottom:1px solid #ccd5df; background:white;')
-        layout.addWidget(self.hint)
+        self.hint.hide()
         split = QSplitter(); self.split = split
         sidebar = QWidget(); self.sidebar=sidebar; left = QVBoxLayout(sidebar); left.setContentsMargins(6,6,3,6)
         left.addWidget(QLabel('หน้าเอกสาร'))
@@ -286,10 +293,42 @@ class Window(QMainWindow):
         self.summary.setStyleSheet('padding:4px 8px; background:white; border-top:1px solid #ccd5df;')
         layout.addWidget(self.summary)
         from PySide6.QtGui import QShortcut, QKeySequence
-        for key, callback in [('Delete',self.delete_pages),('Ctrl+Z',self.undo),('Ctrl+Y',self.redo),('Ctrl+Shift+Z',self.redo),('Ctrl+O',self.choose),('Ctrl+Shift+S',self.export)]:
+        for key, callback in [('Delete',self.delete_pages),('Ctrl+Z',self.undo),('Ctrl+Y',self.redo),('Ctrl+Shift+Z',self.redo),('Ctrl+O',self.choose),('Ctrl+Shift+S',self.export),('F1',self.show_help)]:
             shortcut=QShortcut(QKeySequence(key),self);shortcut.activated.connect(callback)
         self.set_grid_view(True)
         self.update_controls()
+
+    def show_help(self):
+        if self.help_dialog is None:
+            dialog=QDialog(self)
+            dialog.setWindowTitle('คีย์ลัดและวิธีใช้งาน')
+            dialog.setMinimumWidth(480)
+            box=QVBoxLayout(dialog)
+            text=QLabel("""
+                <h3>คีย์ลัด</h3>
+                <table cellpadding="7">
+                <tr><td><b>Ctrl + O</b></td><td>เพิ่มไฟล์</td></tr>
+                <tr><td><b>Ctrl + Shift + S</b></td><td>บันทึกเป็น PDF ใหม่</td></tr>
+                <tr><td><b>Delete</b></td><td>ลบหน้าที่เลือก</td></tr>
+                <tr><td><b>Ctrl + Z</b></td><td>เลิกทำ</td></tr>
+                <tr><td><b>Ctrl + Y / Ctrl + Shift + Z</b></td><td>ทำซ้ำ</td></tr>
+                <tr><td><b>Ctrl + A</b></td><td>เลือกทุกหน้าในรายการหน้า</td></tr>
+                <tr><td><b>F1</b></td><td>เปิดหน้าช่วยเหลือนี้</td></tr>
+                <tr><td><b>Esc</b></td><td>ยกเลิกการลาก หรือปิดหน้าช่วยเหลือ</td></tr>
+                </table>
+                <h3>ใช้เมาส์</h3>
+                <p>ลากรูปย่อเพื่อจัดลำดับหน้า<br>
+                ดับเบิลคลิกที่รูปย่อเพื่ออ่านทีละหน้า<br>
+                กด Ctrl ค้างแล้วคลิกเพื่อเลือกหลายหน้า<br>
+                กด Shift ค้างแล้วคลิกเพื่อเลือกหน้าเป็นช่วง</p>
+                """)
+            text.setTextFormat(Qt.TextFormat.RichText)
+            box.addWidget(text)
+            buttons=QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+            buttons.button(QDialogButtonBox.StandardButton.Close).setText('ปิด')
+            buttons.rejected.connect(dialog.reject);box.addWidget(buttons)
+            self.help_dialog=dialog
+        self.help_dialog.show();self.help_dialog.raise_();self.help_dialog.activateWindow()
 
     def set_grid_view(self, enabled):
         self.grid_button.setChecked(enabled); self.detail_button.setChecked(not enabled)
