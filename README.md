@@ -1,5 +1,7 @@
 # GETEdit
 
+<p align="center"><img src="assets/logo.png" width="160" alt="GETEdit logo"></p>
+
 <p align="center">
   <b>จัดหน้า PDF ง่าย ๆ — เพิ่ม ลบ ลากเรียง คัดลอก และวาง</b><br>
   <i>A free, open-source PDF page organizer for Linux and Windows.</i>
@@ -16,10 +18,10 @@
 
 <p align="center">
   <a href="https://github.com/n0ngXarm/GETEdit/releases/download/v1.0.5/GETEdit-1.0.5-Linux-source.zip"><img src="https://img.shields.io/badge/Download-Linux-205b97?style=for-the-badge" alt="Download Linux source ZIP"></a>
-  <a href="https://github.com/n0ngXarm/GETEdit/releases/download/v1.0.5/GETEdit-1.0.5-Windows-source.zip"><img src="https://img.shields.io/badge/Download-Windows-205b97?style=for-the-badge" alt="Download Windows source ZIP"></a>
+  <a href="https://github.com/n0ngXarm/GETEdit/releases/download/v1.0.6/GETEdit-1.0.6-windows-x64-setup.exe"><img src="https://img.shields.io/badge/Download-Windows-205b97?style=for-the-badge" alt="Download Windows Setup.exe"></a>
 </p>
 
-<p align="center"><b>ใช้ฟรี ไม่ต้องสมัครสมาชิก</b> · แจกซอร์สพร้อมตัวเปิดโปรแกรม · ต้องมี Python ก่อนใช้งาน</p>
+<p align="center"><b>ใช้ฟรี ไม่ต้องสมัครสมาชิก</b> · Windows มี Setup.exe พร้อม runtime · Linux มีชุด source</p>
 
 [ภาษาไทย](#ภาษาไทย) | [English](#english) | [รุ่นล่าสุด / Latest release](https://github.com/n0ngXarm/GETEdit/releases/latest)
 
@@ -31,12 +33,12 @@
 
 ### ดาวน์โหลดฟรี
 
-| ระบบ | รุ่น 1.0.5 | เปิดโปรแกรมหลังติดตั้ง dependencies |
+| ระบบ | ดาวน์โหลด | วิธีเปิด |
 | --- | --- | --- |
 | Linux | [ดาวน์โหลด ZIP](https://github.com/n0ngXarm/GETEdit/releases/download/v1.0.5/GETEdit-1.0.5-Linux-source.zip) | `sh Start-Linux.sh` หรือเมนู Nautilus Scripts |
-| Windows | [ดาวน์โหลด ZIP](https://github.com/n0ngXarm/GETEdit/releases/download/v1.0.5/GETEdit-1.0.5-Windows-source.zip) | ดับเบิลคลิก `Start-Windows.bat` |
+| Windows 1.0.6 | [ดาวน์โหลด Setup.exe](https://github.com/n0ngXarm/GETEdit/releases/download/v1.0.6/GETEdit-1.0.6-windows-x64-setup.exe) | เปิด Setup.exe แล้วเปิด GETEdit จาก Start Menu |
 
-**แตก ZIP ก่อนใช้งาน ชุดนี้ต้องมี Python 3.10+ แบบ 64-bit และติดตั้ง dependencies ตามวิธีด้านล่าง ยังไม่ใช่ EXE/AppImage ที่รวม runtime ในตัว**
+**Windows Setup.exe รวม runtime แล้ว ไม่ต้องลง Python เอง ส่วน Linux/source ZIP ต้องแตกไฟล์และติดตั้ง Python/dependencies ตามวิธีด้านล่าง**
 
 [ดูทุกรุ่นและบันทึกการเปลี่ยนแปลง](https://github.com/n0ngXarm/GETEdit/releases) · [ค่า SHA-256 สำหรับตรวจสอบ ZIP](https://github.com/n0ngXarm/GETEdit/releases/download/v1.0.5/SHA256SUMS.txt)
 
@@ -215,6 +217,18 @@ GETEdit เปิดให้ใช้งาน **ฟรีและเปิด
 
 GETEdit is licensed under **[GNU AGPL-3.0-only](LICENSE)**. You may use and redistribute it under those terms. See [NOTICE](NOTICE) and [THIRD_PARTY.md](THIRD_PARTY.md) for dependency notices.
 
-## Windows native installer validation
+## Windows 10/11 x64
 
-Native per-user Setup.exe is being verified in the Windows installer workflow. It bundles the runtime; installing Python is not required. Builds are unsigned. Windows SmartScreen warnings are possible. No firewall rules, antivirus exclusions, services or startup tasks are added. Send-to-device still requires Tailscale separately; GETEdit Office conversion requires LibreOffice separately. See PROJECT_PROGRESS.md for actual validation status.
+[ดาวน์โหลด GETEdit 1.0.6 Setup.exe](https://github.com/n0ngXarm/GETEdit/releases/download/v1.0.6/GETEdit-1.0.6-windows-x64-setup.exe) · [ผลและไฟล์ตรวจสอบ](https://github.com/n0ngXarm/GETEdit/releases/tag/v1.0.6)
+
+เปิด Setup.exe แล้วทำตามขั้นตอน ติดตั้งเฉพาะบัญชีผู้ใช้ มีทางลัด Start Menu และถอนติดตั้งผ่าน Settings → Apps ได้ ไม่ต้องลง Python หรือ Node.js เอง
+
+ตัวติดตั้งผ่าน Windows CI: ติดตั้ง เปิดโปรแกรมจากพาธภาษาไทยและช่องว่าง ติดตั้งซ้ำ ตรวจทางลัดและรายการถอนติดตั้ง แล้วถอนติดตั้งโดยคงไฟล์ตัวอย่างของผู้ใช้ไว้ อ่านรายละเอียดและข้อจำกัดใน [docs/WINDOWS_INSTALLER.md](docs/WINDOWS_INSTALLER.md) การทดสอบนี้ไม่ใช่การยืนยันบนเครื่อง Windows 10/11 ของผู้ใช้จริง
+
+ไฟล์ยัง **ไม่มีลายเซ็นดิจิทัล** จึงอาจมี SmartScreen เตือน มี checksum และรายงานการสแกนในหน้า release โปรแกรมไม่เพิ่ม firewall exceptions, antivirus exclusions, services หรือ startup tasks
+
+GETEdit จัดการหน้าเอกสาร ไม่แก้ข้อความในหน้า การนำเข้า Office ต้องมี LibreOffice แยกต่างหาก
+
+## Agent instructions
+
+Read [AGENTS.md](AGENTS.md), PROJECT_PROGRESS.md and the project skill under `.agents/skills/` before maintenance. These are repository-local instructions; no global installation is needed.
