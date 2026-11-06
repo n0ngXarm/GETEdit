@@ -4,3 +4,7 @@ dist/
 build/
 *.pdf
 *.png
+
+/packaging/version_info.txt
+
+!assets/logo.png
