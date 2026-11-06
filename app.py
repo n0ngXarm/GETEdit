@@ -414,10 +414,17 @@ class Window(QMainWindow):
         self.import_timeout=QTimer(self);self.import_timeout.setSingleShot(True)
         self.import_timeout.timeout.connect(self.cancel_import)
         self.import_timeout.start(180000)
-        self.import_job.start(sys.executable,[str(Path(__file__).with_name('import_worker.py'))])
         request=json.dumps({'paths':self.import_paths,'directory':self.import_folder.name}).encode('utf-8')
-        self.import_job.write(request);self.import_job.closeWriteChannel()
+        job=self.import_job
+        # Windows may emit FailedToStart synchronously from start(). Send only
+        # after started, without dereferencing fields cleaned up by that signal.
+        job.started.connect(lambda:self.send_import_request(job,request))
+        job.start(sys.executable,[str(Path(__file__).with_name('import_worker.py'))])
         self.update_controls()
+
+    def send_import_request(self, job, request):
+        if job is self.import_job:
+            job.write(request);job.closeWriteChannel()
 
     def import_progress(self):
         if self.import_job is None:return

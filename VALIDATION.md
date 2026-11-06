@@ -3,7 +3,7 @@
 ## Confirmed locally
 
 - Fedora Linux, Python 3.14, PyMuPDF 1.28.2, PySide6 6.11.2.
-- Regression suite: 23 tests passed (exit 0), including source integrity,
+- Regression suite: 24 tests passed (exit 0), including source integrity,
   drag reorder/export, multi-selection, deletion/undo, corrupt input, failed
   worker start, worker termination, atomic save failures/races, save/undo dirty
   state, bounded page rasterization and lazy 300-page thumbnail loading.
@@ -26,3 +26,7 @@ preservation of existing digital signatures are outside supported editing.
 AGPL-3.0-only application source is included; dependency binaries are not bundled.
 
 Deterministic stress check: 300 initial pages, 90 mixed reorder/delete/undo operations; 273 final pages matched the reference model after export/reopen. Original file bytes unchanged. Local run passed in 8.736 seconds.
+
+CI first found a synchronous QProcess FailedToStart cleanup race on Windows;
+fixed by sending the request only from QProcess.started. Regression added.
+Ubuntu runner required libegl1; owner approved installing it only in ephemeral CI.

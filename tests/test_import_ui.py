@@ -71,3 +71,15 @@ class ImportUITests(unittest.TestCase):
         self.assertFalse(window.busy)
         self.assertTrue(window.add.isEnabled())
         window.changed=False;window.close()
+
+    def test_synchronous_failed_start_releases_state(self):
+        from app import QProcess
+        window=Window()
+        def immediate_failure(job,*args):
+            job.errorOccurred.emit(QProcess.ProcessError.FailedToStart)
+        with patch('app.QMessageBox.warning'),patch.object(QProcess,'start',immediate_failure):
+            window.begin_import(['ignored.pdf'])
+        self.assertFalse(window.busy)
+        self.assertIsNone(window.import_job)
+        self.assertTrue(window.add.isEnabled())
+        window.changed=False;window.close()
