@@ -10,3 +10,5 @@ and native packaging have not been verified. No new dependencies installed.
 
 Next: owner chooses application license; verify on Windows and Linux desktops;
 prepare native distribution after approval of any required build dependencies.
+
+2026-11-06: Added Linux Nautilus Scripts installer matching existing FILE-to-file/Allzip/Send-to-device integration. App accepts selected paths via argv or Nautilus environment. Installer uses current Python and project path, checks dependencies, and never installs packages. Existing unit tests pass; isolated installer shell syntax and Thai path UI prefill pass with Qt offscreen (exit 0). Real Nautilus click workflow not yet verified.

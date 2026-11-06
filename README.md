@@ -26,7 +26,25 @@ Start-Windows.bat
 
 หลังติดตั้งแล้วดับเบิลคลิก Start-Windows.bat เพื่อเปิดโปรแกรม
 
-### Linux
+### Linux — เมนูคลิกขวา Nautilus Scripts
+
+หลังติดตั้ง dependencies ตามด้านล่าง รัน:
+
+```sh
+sh install-linux.sh
+```
+
+จากนั้นเลือก PDF → คลิกขวา → Scripts → GETEdit
+ไฟล์ที่เลือกจะถูกเปิดเป็นไฟล์หลัก หากเลือกสองไฟล์จะใช้ไฟล์ที่สองเป็นไฟล์ที่จะแทรก
+ลำดับขึ้นกับตัวจัดการไฟล์ ให้ตรวจชื่อไฟล์ในหน้าต่างก่อนบันทึก
+รองรับทั้ง arguments และ NAUTILUS_SCRIPT_SELECTED_FILE_PATHS
+ตัวติดตั้งไม่ดาวน์โหลด dependencies และไม่ต้องใช้ sudo
+เก็บโฟลเดอร์โปรแกรมไว้ที่เดิมหลังติดตั้ง หากย้ายให้รันตัวติดตั้งใหม่
+ถอนเมนูได้โดยลบเฉพาะไฟล์ GETEdit ใน ~/.local/share/nautilus/scripts
+(หรือ $XDG_DATA_HOME/nautilus/scripts หากตั้งค่าไว้)
+
+เปิดเป็นหน้าต่างโดยตรงก็ได้:
+
 
 ```sh
 python3 -m venv .venv

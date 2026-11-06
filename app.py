@@ -76,17 +76,20 @@ class Window(QMainWindow):
         self.save.clicked.connect(self.export); layout.addWidget(self.save)
         layout.addWidget(QLabel('ทำงานในเครื่อง • แทรกทุกหน้าของไฟล์ที่เลือก • ต้นฉบับยังอยู่ครบ'))
 
-    def choose(self, index):
-        path, _ = QFileDialog.getOpenFileName(self, 'เลือก PDF', '', 'PDF (*.pdf)')
-        if not path: return
-        try: count = inspect_pdf(path)
-        except Exception as error:
-            QMessageBox.warning(self, 'เปิดไฟล์ไม่ได้', str(error)); return
+    def load_path(self, index, path):
+        count = inspect_pdf(path)
         self.labels[index].setText(f'{path}\n{count} หน้า')
         if index == 0:
             self.main = path; self.position.setRange(1, count + 1)
         else: self.extra = path
         self.save.setEnabled(bool(self.main and self.extra)); self.preview()
+
+    def choose(self, index):
+        path, _ = QFileDialog.getOpenFileName(self, 'เลือก PDF', '', 'PDF (*.pdf)')
+        if not path: return
+        try: self.load_path(index, path)
+        except Exception as error:
+            QMessageBox.warning(self, 'เปิดไฟล์ไม่ได้', str(error))
 
     def preview(self):
         if not self.main: return
@@ -119,5 +122,15 @@ class Window(QMainWindow):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
-    window = Window(); window.show()
+    window = Window()
+    paths = sys.argv[1:]
+    if not paths:
+        paths = os.environ.get('NAUTILUS_SCRIPT_SELECTED_FILE_PATHS', '').splitlines()
+    for index, path in enumerate(paths[:2]):
+        try: window.load_path(index, str(Path(path).absolute()))
+        except Exception as error:
+            QMessageBox.warning(window, 'เปิดไฟล์ไม่ได้', str(error))
+    if len(paths) > 2:
+        QMessageBox.information(window, 'เลือกไฟล์', 'เปิดสองไฟล์แรกแล้ว: ไฟล์หลักและไฟล์ที่จะแทรก กรุณาตรวจสอบลำดับในหน้าต่าง')
+    window.show()
     sys.exit(app.exec())
