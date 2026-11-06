@@ -83,3 +83,12 @@ class ImportUITests(unittest.TestCase):
         self.assertIsNone(window.import_job)
         self.assertTrue(window.add.isEnabled())
         window.changed=False;window.close()
+
+
+class FrozenWorkerTests(unittest.TestCase):
+    def test_frozen_worker_uses_separate_console_executable(self):
+        from app import import_worker_command
+        with patch('app.sys.frozen', True, create=True), patch('app.sys.executable', 'C:/Program Files/GETEdit/GETEdit.exe'):
+            program, args = import_worker_command()
+        self.assertEqual(Path(program).name, 'GETEditWorker.exe')
+        self.assertEqual(args, [])

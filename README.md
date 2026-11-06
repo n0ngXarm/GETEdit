@@ -214,3 +214,7 @@ GETEdit เปิดให้ใช้งาน **ฟรีและเปิด
 ## License
 
 GETEdit is licensed under **[GNU AGPL-3.0-only](LICENSE)**. You may use and redistribute it under those terms. See [NOTICE](NOTICE) and [THIRD_PARTY.md](THIRD_PARTY.md) for dependency notices.
+
+## Windows native installer validation
+
+Native per-user Setup.exe is being verified in the Windows installer workflow. It bundles the runtime; installing Python is not required. Builds are unsigned. Windows SmartScreen warnings are possible. No firewall rules, antivirus exclusions, services or startup tasks are added. Send-to-device still requires Tailscale separately; GETEdit Office conversion requires LibreOffice separately. See PROJECT_PROGRESS.md for actual validation status.
